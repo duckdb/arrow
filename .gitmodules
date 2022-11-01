@@ -1,0 +1,6 @@
+[submodule "duckdb"]
+	path = duckdb
+	url = https://github.com/duckdb/duckdb
+[submodule "arrow"]
+	path = arrow_dep
+	url = https://github.com/apache/arrow
