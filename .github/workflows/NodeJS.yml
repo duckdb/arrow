@@ -1,0 +1,43 @@
+on: [push, pull_request,repository_dispatch]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  nodejs:
+    name: NodeJS
+    runs-on: macos-latest
+    env:
+      GEN: ninja
+
+    steps:
+      - name: Install Ninja
+        run: brew install ninja
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Update DuckDB submodule
+        run: |
+          git config --global --add safe.directory '*'
+          make pull
+
+      - name: Build DuckDB
+        run: |
+          make release
+          cd duckdb
+          source scripts/install_node.sh 16
+          cd tools/nodejs
+          make clean
+          ./configure
+          npm install --build-from-source
+
+      - name: Test NodeJS
+        run: |
+          npm test ../../../test/nodejs/*.js
