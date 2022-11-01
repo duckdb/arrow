@@ -1,3 +1,4 @@
 [submodule "duckdb"]
 	path = duckdb
-	url = https://github.com/duckdb/duckdb
+	url = https://github.com/samansmink/duckdb
+	branch = nodearrow-5
