@@ -1,0 +1,7 @@
+# name: test/sql/test_substrait.test
+# description: round trip arrow serialization
+# group: [arrow]
+# TODO actually write this test
+
+statement ok
+SELECT * FROM get_arrow_ipc((SELECT 'HAHA HET WERKT'));
