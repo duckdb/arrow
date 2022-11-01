@@ -40,4 +40,5 @@ jobs:
 
       - name: Test NodeJS
         run: |
+          cd duckdb/tools/nodejs
           npm test ../../../test/nodejs/*.js
