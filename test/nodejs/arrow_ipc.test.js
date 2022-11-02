@@ -384,3 +384,36 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
     })
 }
 
+describe(`Arrow IPC api fails neatly when extension not loaded`, () => {
+    let db;
+    let conn;
+    before((done) => {
+        db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"}, () => {
+            conn = new duckdb.Connection(db, () => {
+                done();
+            });
+        });
+    });
+
+    it(`Basic examples`, async () => {
+        const range_size = 130000;
+        const query = `SELECT * FROM range(0,${range_size}) tbl(i)`;
+
+        db.arrowIPCStream(query).then(
+            () => Promise.reject(new Error('Expected method to reject.')),
+            err => {
+                assert(err.message.includes("Catalog Error: Table Function with name to_arrow_ipc does not exist!"))
+            }
+        );
+
+        db.arrowIPCAll(`SELECT * FROM ipc_table`, function (err, result) {
+            if (err) {
+                assert(err.message.includes("Catalog Error: Table Function with name to_arrow_ipc does not exist!"))
+            } else {
+                assert.fail("Expected error");
+            }
+        });
+
+        assert.throws(() => db.register_buffer("ipc_table", [1,'a',1], true), TypeError, "Incorrect parameters");
+    });
+});
