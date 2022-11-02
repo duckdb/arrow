@@ -1,6 +1,5 @@
 #define DUCKDB_EXTENSION_MAIN
 
-// TODO clean this
 #include "arrow/array/array_dict.h"
 #include "arrow/array/array_nested.h"
 #include "arrow/array/builder_primitive.h"
@@ -17,7 +16,6 @@
 #include "arrow/c/bridge.h"
 #include "arrow_extension.hpp"
 #include "arrow_stream_buffer.hpp"
-#include <iostream>
 
 #include "duckdb.hpp"
 #ifndef DUCKDB_AMALGAMATION
@@ -43,7 +41,7 @@ private:
 struct ArrowIPCScanFunctionData : public ArrowScanFunctionData {
 public:
 	using ArrowScanFunctionData::ArrowScanFunctionData;
-	unique_ptr<BufferingArrowIPCStreamDecoder> stream_decoder = nullptr; // TODO do we even need this?
+	unique_ptr<BufferingArrowIPCStreamDecoder> stream_decoder = nullptr;
 };
 
 // IPC Table scan is identical to regular arrow scan except we need to produce the stream from the ipc pointers
@@ -60,6 +58,7 @@ public:
 		    ArrowTableFunction::ArrowScanInitGlobal, ArrowTableFunction::ArrowScanInitLocal);
 
 		scan_arrow_ipc_func.cardinality = ArrowTableFunction::ArrowScanCardinality;
+        scan_arrow_ipc_func.get_batch_index = ArrowTableFunction::ArrowGetBatchIndex;
 		scan_arrow_ipc_func.projection_pushdown = true;
 		scan_arrow_ipc_func.filter_pushdown = false;
 
@@ -98,15 +97,12 @@ private:
 		auto stream_factory_ptr = (uintptr_t)&stream_decoder->buffer();
 		auto stream_factory_produce = (stream_factory_produce_t)&ArrowIPCStreamBufferReader::CreateStream;
 		auto stream_factory_get_schema = (stream_factory_get_schema_t)&ArrowIPCStreamBufferReader::GetSchema;
-		//		auto rows_per_thread = 1000000;
-
-		// TODO: Can no longer set this limit?
 		auto res = make_unique<ArrowIPCScanFunctionData>(stream_factory_produce, stream_factory_ptr);
-
-		// TODO Everything below this is identical to the bind in duckdb/src/function/table/arrow.cpp
 
 		// Store decoder
 		res->stream_decoder = std::move(stream_decoder);
+
+        // TODO Everything below this is identical to the bind in duckdb/src/function/table/arrow.cpp
 
 		auto &data = *res;
 		stream_factory_get_schema(stream_factory_ptr, data.schema_root);
@@ -316,15 +312,15 @@ static void LoadInternal(DatabaseInstance &instance) {
 	con.BeginTransaction();
 	auto &catalog = Catalog::GetCatalog(*con.context);
 
-	// test/sql/function/generic/test_table_param.test
-	TableFunction get_arrow_ipc_func("get_arrow_ipc", {LogicalType::TABLE}, nullptr, ToArrowIpcBind,
+    // Register to_arrow_ipc
+	TableFunction to_arrow_ipc_func("to_arrow_ipc", {LogicalType::TABLE}, nullptr, ToArrowIpcBind,
 	                                 ToArrowIpcInitGlobal, ToArrowIpcInitLocal);
-	get_arrow_ipc_func.in_out_function = ToArrowIpcFunction;
-	get_arrow_ipc_func.in_out_function_final = ToArrowIpcFunctionFinal;
+	to_arrow_ipc_func.in_out_function = ToArrowIpcFunction;
+	to_arrow_ipc_func.in_out_function_final = ToArrowIpcFunctionFinal;
+	CreateTableFunctionInfo to_arrow_ipc_info(to_arrow_ipc_func);
+	catalog.CreateTableFunction(*con.context, &to_arrow_ipc_info);
 
-	CreateTableFunctionInfo get_arrow_ipc_info(get_arrow_ipc_func);
-	catalog.CreateTableFunction(*con.context, &get_arrow_ipc_info);
-
+    // Register scan_arrow_ipc
 	TableFunction scan_arrow_ipc = ArrowIPCTableFunction::GetFunction();
 	CreateTableFunctionInfo scan_arrow_ipc_info(scan_arrow_ipc);
 	catalog.CreateTableFunction(*con.context, &scan_arrow_ipc_info);
