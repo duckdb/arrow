@@ -1,35 +1,4 @@
-#define DUCKDB_EXTENSION_MAIN
-
 #include "arrow_scan_ipc.hpp"
-#include "arrow_scan_ipc.hpp"
-
-#include "arrow/array/array_dict.h"
-#include "arrow/array/array_nested.h"
-#include "arrow/array/builder_primitive.h"
-#include "arrow/buffer.h"
-#include "arrow/io/memory.h"
-#include "arrow/ipc/options.h"
-#include "arrow/ipc/reader.h"
-#include "arrow/ipc/type_fwd.h"
-#include "arrow/ipc/writer.h"
-#include "arrow/record_batch.h"
-#include "arrow/result.h"
-#include "arrow/status.h"
-#include "arrow/type_fwd.h"
-#include "arrow/c/bridge.h"
-
-
-#include "duckdb.hpp"
-
-#ifndef DUCKDB_AMALGAMATION
-
-#include "duckdb/common/arrow/result_arrow_wrapper.hpp"
-#include "duckdb/common/arrow/arrow_appender.hpp"
-#include "duckdb/common/arrow/arrow_converter.hpp"
-#include "duckdb/parser/parsed_data/create_table_function_info.hpp"
-#include "duckdb/function/table/arrow.hpp"
-
-#endif
 
 namespace duckdb {
 
@@ -49,10 +18,6 @@ TableFunction ArrowIPCTableFunction::GetFunction() {
     scan_arrow_ipc_func.filter_pushdown = false;
 
     return scan_arrow_ipc_func;
-}
-
-void ArrowIPCTableFunction::RegisterFunction(BuiltinFunctions &set) {
-    set.AddFunction(GetFunction());
 }
 
 unique_ptr <FunctionData> ArrowIPCTableFunction::ArrowScanBind(ClientContext &context, TableFunctionBindInput &input,

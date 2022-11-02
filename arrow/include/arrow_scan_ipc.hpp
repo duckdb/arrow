@@ -2,6 +2,7 @@
 
 #include "duckdb/function/table/arrow.hpp"
 #include "arrow_stream_buffer.hpp"
+
 #include "duckdb.hpp"
 
 namespace duckdb {
@@ -17,7 +18,6 @@ public:
 struct ArrowIPCTableFunction : public ArrowTableFunction {
 public:
     static TableFunction GetFunction();
-    static void RegisterFunction(BuiltinFunctions &set);
 
 private:
     static unique_ptr<FunctionData> ArrowScanBind(ClientContext &context, TableFunctionBindInput &input,
