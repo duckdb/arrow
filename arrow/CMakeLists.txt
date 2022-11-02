@@ -64,7 +64,7 @@ project(${TARGET_NAME})
 include_directories(include)
 include_directories(../..)
 
-set(ARROW_SOURCES arrow_extension.cpp arrow_stream_buffer.cpp)
+set(ARROW_SOURCES arrow_extension.cpp arrow_stream_buffer.cpp arrow_scan_ipc.cpp)
 
 add_library(arrow_extension STATIC ${ARROW_SOURCES})
 
