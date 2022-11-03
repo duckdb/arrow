@@ -5,7 +5,7 @@ include(ExternalProject)
 ExternalProject_Add(
         arrow_ep
         GIT_REPOSITORY "https://github.com/apache/arrow"
-        GIT_TAG 4755e0f24411a02ad5cd839a64ca2d1a43f6df6c
+        GIT_TAG ea6875fd2a3ac66547a9a33c5506da94f3ff07f2
         PREFIX "${CMAKE_BINARY_DIR}/third_party/arrow"
         INSTALL_DIR "${CMAKE_BINARY_DIR}/third_party/arrow/install"
         BUILD_BYPRODUCTS
@@ -74,8 +74,6 @@ build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ARROW_SOURCES})
 
 include_directories(${install_arrow}/include)
 
-set_property(TARGET arrow_loadable_extension PROPERTY CXX_STANDARD 17)
-set_property(TARGET arrow_extension PROPERTY CXX_STANDARD 17)
 target_link_libraries(arrow_loadable_extension ${install_arrow}/lib/libarrow.a)
 target_link_libraries(arrow_extension ${install_arrow}/lib/libarrow.a)
 add_dependencies(arrow_loadable_extension arrow_ep)
