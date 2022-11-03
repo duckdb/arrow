@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 
 if(DEFINED EXTERNAL_EXTENSION_DIRECTORIES)
-    add_subdirectory(arrow)
+    add_subdirectory(arrow .)
 else()
     set(TARGET_NAME arrow)
     project(${TARGET_NAME})

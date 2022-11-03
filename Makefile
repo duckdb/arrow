@@ -23,8 +23,8 @@ ifeq (${BUILD_R}, 1)
 endif
 
 pull:
-#	git submodule init
-#	git submodule update --recursive --remote
+	git submodule init
+	git submodule update --recursive --remote
 
 clean:
 	rm -rf build
