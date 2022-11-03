@@ -14,6 +14,7 @@ ExternalProject_Add(
             ${CMAKE_COMMAND} -G${CMAKE_GENERATOR}
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/third_party/arrow/install
+            -DCMAKE_INSTALL_LIBDIR=lib
             -DARROW_BUILD_STATIC=ON
             -DARROW_BUILD_SHARED=OFF
             -DARROW_NO_DEPRECATED_API=ON
@@ -74,10 +75,10 @@ build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${ARROW_SOURCES})
 
 include_directories(${install_arrow}/include)
 
-target_link_libraries(arrow_loadable_extension ${install_arrow}/lib/libarrow.a)
-target_link_libraries(arrow_extension ${install_arrow}/lib/libarrow.a)
 add_dependencies(arrow_loadable_extension arrow_ep)
 add_dependencies(arrow_extension arrow_ep)
+target_link_libraries(arrow_loadable_extension ${install_arrow}/lib/libarrow.a)
+target_link_libraries(arrow_extension ${install_arrow}/lib/libarrow.a)
 
 install(
   TARGETS arrow_extension
