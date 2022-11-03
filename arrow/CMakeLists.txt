@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 2.8.12)
 
+if (OSX_BUILD_UNIVERSAL EQUAL 1)
+    set(OSX_UNIVERSAL_FLAG -DCMAKE_OSX_ARCHITECTURES=x86_64$<SEMICOLON>arm64)
+else()
+    set(OSX_UNIVERSAL_FLAG "")
+endif()
+
 # Building Arrow
 include(ExternalProject)
 ExternalProject_Add(
@@ -12,6 +18,7 @@ ExternalProject_Add(
         <INSTALL_DIR>/lib/libarrow.a
         CONFIGURE_COMMAND
             ${CMAKE_COMMAND} -G${CMAKE_GENERATOR}
+            ${OSX_UNIVERSAL_FLAG}
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/third_party/arrow/install
             -DCMAKE_INSTALL_LIBDIR=lib
