@@ -1,7 +1,10 @@
-# name: test/sql/test_substrait.test
+# name: test/sql/test_arrow.test
 # description: round trip arrow serialization
 # group: [arrow]
-# TODO actually write this test
+
+# NOTE: for now there's not much we can test here, since we cannot really pass pointers from the
+#       serialized blobs to the scan_arrow_ipc function in SQL. Therefore tests of these features
+#       currently live in the NodeJS client tests.
 
 statement ok
-SELECT * FROM get_arrow_ipc((SELECT 'HAHA HET WERKT'));
+SELECT * FROM to_arrow_ipc((SELECT 'Its working!'));
