@@ -95,11 +95,9 @@ install(
 
 # Filthy hack: currently duckdb ci expects extensions to build their loadable extensions to their root build folder
 #              so if we're building from within duckdb, we perform this copy to move the file to the expected location
-# Fixme: DuckDB should provide a neat way for extensions to specify where the loadable_execution will be located
-if(DEFINED DUCKDB_OUT_OF_TREE)
-    add_custom_command(
-        TARGET arrow_loadable_extension POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/arrow.duckdb_extension
-        ${CMAKE_CURRENT_BINARY_DIR}/../)
-endif()
+# FIXME: DuckDB should provide a neat way for extensions to specify where the loadable_execution will be located
+add_custom_command(
+    TARGET arrow_loadable_extension POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    ${CMAKE_CURRENT_BINARY_DIR}/arrow.duckdb_extension
+    ${CMAKE_CURRENT_BINARY_DIR}/../)
