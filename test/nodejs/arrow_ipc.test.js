@@ -38,9 +38,7 @@ describe(`Arrow IPC Demo`, () => {
         conn = new duckdb.Connection(db);
 
         conn.run(`LOAD '${extension_path}';`, function (err) {
-            if (err) {
-                throw err;
-            }
+            assert(!err);
             done();
         });
     });
@@ -106,9 +104,7 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
             db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
             conn = new duckdb.Connection(db);
             conn.run(`LOAD '${extension_path}';`, function (err) {
-                if (err) {
-                    throw err;
-                }
+                assert(!err);
                 done();
             });
         });
@@ -212,17 +208,16 @@ describe('[Benchmark] Arrow IPC Single Int Column (50M tuples)',() => {
         db = new duckdb.Database(':memory:',  {"allow_unsigned_extensions":"true"});
         conn = new duckdb.Connection(db);
         conn.run("CREATE TABLE test AS select * FROM range(0,?) tbl(i);", column_size, (err) => {
-            if (err) throw err;
+            assert(!err);
         });
         conn.run(`LOAD '${extension_path}';`, function (err) {
-            if (err) throw err;
-            done();
+            assert(!err);
         });
     });
 
     it('DuckDB table -> DuckDB table', (done) => {
         conn.run('CREATE TABLE copy_table AS SELECT * FROM test', (err) => {
-            if (err) throw err;
+            assert(!err);
             done();
         });
     });
@@ -252,7 +247,7 @@ describe('Buffer registration',() => {
         conn1 = new duckdb.Connection(db);
         conn2 = new duckdb.Connection(db);
         conn1.run(`LOAD '${extension_path}';`, function (err) {
-            if (err) throw err;
+            assert(!err);
             done();
         });
     });
@@ -282,11 +277,11 @@ describe('Buffer registration',() => {
         });
 
         conn1.run('CREATE TABLE arrow_buffer AS SELECT 7 as a;', (err) => {
-            if (err) throw err;
+            assert(!err);
         });
 
         conn1.all('SELECT * FROM arrow_buffer;', (err, result) => {
-            if (err) throw err;
+            assert(!err);
             assert.deepEqual(result, [{'a': 7}]);
         });
 
@@ -297,7 +292,7 @@ describe('Buffer registration',() => {
         })
 
         conn1.all('SELECT * FROM arrow_buffer;', (err, result) => {
-            if (err) throw err;
+            assert(!err);
             assert.deepEqual(result, [{'b': 1337}]);
         });
 
@@ -306,7 +301,7 @@ describe('Buffer registration',() => {
         });
 
         conn1.all('SELECT * FROM arrow_buffer;', (err, result) => {
-            if (err) throw err;
+            assert(!err);
             assert.deepEqual(result, [{'a': 7}]);
         });
 
@@ -332,19 +327,19 @@ describe('Buffer registration',() => {
         })
 
         conn1.all('SELECT * FROM arrow_buffer;', (err, result) => {
-            if (err) throw err;
+            assert(!err);
             assert.deepEqual(result, [{'a': 1337}]);
         });
 
         conn2.all('SELECT * FROM arrow_buffer;', (err, result) => {
-            if (err) throw err;
+            assert(!err);
             assert.deepEqual(result, [{'b': 42}]);
         });
 
         conn1 = 0;
 
         conn2.all('SELECT * FROM arrow_buffer;', (err, result) => {
-            if (err) throw err;
+            assert(!err);
             assert.deepEqual(result, [{'b': 42}]);
         });
 
@@ -375,7 +370,7 @@ describe('[Benchmark] Arrow IPC TPC-H lineitem.parquet', () => {
         db = new duckdb.Database(':memory:',  {"allow_unsigned_extensions":"true"});
         conn = new duckdb.Connection(db);
         conn.run(`LOAD '${extension_path}';`, function (err) {
-            if (err) throw err;
+            assert(!err);
             done();
         });
     });
@@ -465,9 +460,7 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
             db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
             conn = new duckdb.Connection(db);
             conn.run(`LOAD '${extension_path}';`, function (err) {
-                if (err) {
-                    throw err;
-                }
+                assert(!err);
                 done();
             });
         });
