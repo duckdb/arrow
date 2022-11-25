@@ -212,6 +212,7 @@ describe('[Benchmark] Arrow IPC Single Int Column (50M tuples)',() => {
         });
         conn.run(`LOAD '${extension_path}';`, function (err) {
             assert(!err);
+            done();
         });
     });
 
