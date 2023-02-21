@@ -17,34 +17,38 @@
 namespace duckdb {
 
 static void LoadInternal(DatabaseInstance &instance) {
-  Connection con(instance);
-  con.BeginTransaction();
-  auto &catalog = Catalog::GetSystemCatalog(*con.context);
+	Connection con(instance);
+	con.BeginTransaction();
+	auto &catalog = Catalog::GetSystemCatalog(*con.context);
 
-  auto to_arrow_fun = ToArrowIPCFunction::GetFunction();
-  CreateTableFunctionInfo to_arrow_ipc_info(to_arrow_fun);
-  catalog.CreateTableFunction(*con.context, &to_arrow_ipc_info);
+	auto to_arrow_fun = ToArrowIPCFunction::GetFunction();
+	CreateTableFunctionInfo to_arrow_ipc_info(to_arrow_fun);
+	catalog.CreateTableFunction(*con.context, &to_arrow_ipc_info);
 
-  auto scan_arrow_fun = ArrowIPCTableFunction::GetFunction();
-  CreateTableFunctionInfo scan_arrow_ipc_info(scan_arrow_fun);
-  catalog.CreateTableFunction(*con.context, &scan_arrow_ipc_info);
+	auto scan_arrow_fun = ArrowIPCTableFunction::GetFunction();
+	CreateTableFunctionInfo scan_arrow_ipc_info(scan_arrow_fun);
+	catalog.CreateTableFunction(*con.context, &scan_arrow_ipc_info);
 
-  con.Commit();
+	con.Commit();
 }
 
-void ArrowExtension::Load(DuckDB &db) { LoadInternal(*db.instance); }
-std::string ArrowExtension::Name() { return "arrow"; }
+void ArrowExtension::Load(DuckDB &db) {
+	LoadInternal(*db.instance);
+}
+std::string ArrowExtension::Name() {
+	return "arrow";
+}
 
 } // namespace duckdb
 
 extern "C" {
 
 DUCKDB_EXTENSION_API void arrow_init(duckdb::DatabaseInstance &db) {
-  LoadInternal(db);
+	LoadInternal(db);
 }
 
 DUCKDB_EXTENSION_API const char *arrow_version() {
-  return duckdb::DuckDB::LibraryVersion();
+	return duckdb::DuckDB::LibraryVersion();
 }
 }
 

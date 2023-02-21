@@ -75,7 +75,7 @@ unique_ptr <FunctionData> ArrowIPCTableFunction::ArrowScanBind(ClientContext &co
         names.push_back(name);
     }
     ArrowTableFunction::RenameArrowColumns(names);
-    return move(res);
+    return std::move(res);
 }
 
 // TODO: cleanup: only difference is the ArrowToDuckDB call

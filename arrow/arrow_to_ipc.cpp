@@ -75,7 +75,7 @@ unique_ptr<FunctionData> ToArrowIPCFunction::Bind(ClientContext &context, TableF
     ArrowConverter::ToArrowSchema(&schema, input.input_table_types, input.input_table_names, tz);
     result->schema = arrow::ImportSchema(&schema).ValueOrDie();
 
-    return move(result);
+    return std::move(result);
 }
 
 OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, TableFunctionInput &data_p, DataChunk &input,
