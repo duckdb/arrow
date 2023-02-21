@@ -22,7 +22,7 @@ TableFunction ArrowIPCTableFunction::GetFunction() {
 
 unique_ptr <FunctionData> ArrowIPCTableFunction::ArrowScanBind(ClientContext &context, TableFunctionBindInput &input,
                                      vector <LogicalType> &return_types, vector <string> &names) {
-    auto stream_decoder = make_unique<BufferingArrowIPCStreamDecoder>();
+    auto stream_decoder = make_uniq<BufferingArrowIPCStreamDecoder>();
 
     // Decode buffer ptr list
     auto buffer_ptr_list = ListValue::GetChildren(input.inputs[0]);
@@ -47,7 +47,7 @@ unique_ptr <FunctionData> ArrowIPCTableFunction::ArrowScanBind(ClientContext &co
     auto stream_factory_ptr = (uintptr_t) & stream_decoder->buffer();
     auto stream_factory_produce = (stream_factory_produce_t) & ArrowIPCStreamBufferReader::CreateStream;
     auto stream_factory_get_schema = (stream_factory_get_schema_t) & ArrowIPCStreamBufferReader::GetSchema;
-    auto res = make_unique<ArrowIPCScanFunctionData>(stream_factory_produce, stream_factory_ptr);
+    auto res = make_uniq<ArrowIPCScanFunctionData>(stream_factory_produce, stream_factory_ptr);
 
     // Store decoder
     res->stream_decoder = std::move(stream_decoder);
@@ -62,7 +62,7 @@ unique_ptr <FunctionData> ArrowIPCTableFunction::ArrowScanBind(ClientContext &co
         }
         if (schema.dictionary) {
             res->arrow_convert_data[col_idx] =
-                    make_unique<ArrowConvertData>(GetArrowLogicalType(schema, res->arrow_convert_data, col_idx));
+                    make_uniq<ArrowConvertData>(GetArrowLogicalType(schema, res->arrow_convert_data, col_idx));
             return_types.emplace_back(GetArrowLogicalType(*schema.dictionary, res->arrow_convert_data, col_idx));
         } else {
             return_types.emplace_back(GetArrowLogicalType(schema, res->arrow_convert_data, col_idx));
