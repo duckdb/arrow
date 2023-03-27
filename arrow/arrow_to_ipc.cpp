@@ -109,7 +109,7 @@ OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, Table
         }
 
         // Append input chunk
-        local_state.appender->Append(input);
+        local_state.appender->Append(input, 0, input.size(), input.size());
         local_state.current_count += input.size();
 
         // If chunk size is reached, we can flush to IPC blob
