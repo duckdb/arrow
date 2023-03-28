@@ -45,14 +45,14 @@ arrow::Status ArrowIPCStreamBufferReader::ReadNext(std::shared_ptr<arrow::Record
 }
 
 /// Arrow array stream factory function
-std::unique_ptr<duckdb::ArrowArrayStreamWrapper>
+duckdb::unique_ptr<duckdb::ArrowArrayStreamWrapper>
 ArrowIPCStreamBufferReader::CreateStream(uintptr_t buffer_ptr, ArrowStreamParameters &parameters) {
 	assert(buffer_ptr != 0);
 	auto buffer = reinterpret_cast<std::shared_ptr<ArrowIPCStreamBuffer> *>(buffer_ptr);
 	auto reader = std::make_shared<ArrowIPCStreamBufferReader>(*buffer);
 
 	// Create arrow stream
-	auto stream_wrapper = duckdb::make_unique<duckdb::ArrowArrayStreamWrapper>();
+	auto stream_wrapper = duckdb::make_uniq<duckdb::ArrowArrayStreamWrapper>();
 	stream_wrapper->arrow_array_stream.release = nullptr;
 	auto maybe_ok = arrow::ExportRecordBatchReader(reader, &stream_wrapper->arrow_array_stream);
 	if (!maybe_ok.ok()) {
@@ -72,7 +72,7 @@ void ArrowIPCStreamBufferReader::GetSchema(uintptr_t buffer_ptr, duckdb::ArrowSc
 	auto reader = std::make_shared<ArrowIPCStreamBufferReader>(*buffer);
 
 	// Create arrow stream
-	auto stream_wrapper = duckdb::make_unique<duckdb::ArrowArrayStreamWrapper>();
+	auto stream_wrapper = duckdb::make_uniq<duckdb::ArrowArrayStreamWrapper>();
 	stream_wrapper->arrow_array_stream.release = nullptr;
 	auto maybe_ok = arrow::ExportRecordBatchReader(reader, &stream_wrapper->arrow_array_stream);
 	if (!maybe_ok.ok()) {

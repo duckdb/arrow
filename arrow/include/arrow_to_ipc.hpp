@@ -8,7 +8,7 @@ namespace duckdb {
 class ArrowStringVectorBuffer : public VectorBuffer {
 public:
     explicit ArrowStringVectorBuffer(std::shared_ptr <arrow::Buffer> buffer_p)
-            : VectorBuffer(VectorBufferType::OPAQUE_BUFFER), buffer(move(buffer_p)) {
+            : VectorBuffer(VectorBufferType::OPAQUE_BUFFER), buffer(std::move(buffer_p)) {
     }
 
 private:
