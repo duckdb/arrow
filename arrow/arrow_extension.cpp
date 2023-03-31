@@ -21,11 +21,11 @@ static void LoadInternal(DatabaseInstance &instance) {
 	con.BeginTransaction();
 	auto &catalog = Catalog::GetSystemCatalog(*con.context);
 
-    auto to_arrow_fun = ToArrowIPCFunction::GetFunction();
+	auto to_arrow_fun = ToArrowIPCFunction::GetFunction();
 	CreateTableFunctionInfo to_arrow_ipc_info(to_arrow_fun);
 	catalog.CreateTableFunction(*con.context, &to_arrow_ipc_info);
 
-    auto scan_arrow_fun = ArrowIPCTableFunction::GetFunction();
+	auto scan_arrow_fun = ArrowIPCTableFunction::GetFunction();
 	CreateTableFunctionInfo scan_arrow_ipc_info(scan_arrow_fun);
 	catalog.CreateTableFunction(*con.context, &scan_arrow_ipc_info);
 

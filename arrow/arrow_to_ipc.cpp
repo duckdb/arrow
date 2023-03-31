@@ -49,17 +49,17 @@ struct ToArrowIpcLocalState : public LocalTableFunctionState {
 
 unique_ptr<LocalTableFunctionState> ToArrowIPCFunction::InitLocal(ExecutionContext &context, TableFunctionInitInput &input,
                                                                GlobalTableFunctionState *global_state) {
-    return make_unique<ToArrowIpcLocalState>();
+    return make_uniq<ToArrowIpcLocalState>();
 }
 
 unique_ptr<GlobalTableFunctionState> ToArrowIPCFunction::InitGlobal(ClientContext &context,
                                                                  TableFunctionInitInput &input) {
-    return make_unique<ToArrowIpcGlobalState>();
+    return make_uniq<ToArrowIpcGlobalState>();
 }
 
 unique_ptr<FunctionData> ToArrowIPCFunction::Bind(ClientContext &context, TableFunctionBindInput &input,
                                                vector<LogicalType> &return_types, vector<string> &names) {
-    auto result = make_unique<ToArrowIpcFunctionData>();
+    auto result = make_uniq<ToArrowIpcFunctionData>();
 
     result->chunk_size = DEFAULT_CHUNK_SIZE * STANDARD_VECTOR_SIZE;
 
@@ -75,7 +75,7 @@ unique_ptr<FunctionData> ToArrowIPCFunction::Bind(ClientContext &context, TableF
     ArrowConverter::ToArrowSchema(&schema, input.input_table_types, input.input_table_names, tz);
     result->schema = arrow::ImportSchema(&schema).ValueOrDie();
 
-    return move(result);
+    return std::move(result);
 }
 
 OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, TableFunctionInput &data_p, DataChunk &input,
@@ -105,7 +105,7 @@ OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, Table
         output.data[1].SetValue(0, Value::BOOLEAN(1));
     } else {
         if (!local_state.appender) {
-            local_state.appender = make_unique<ArrowAppender>(input.GetTypes(), data.chunk_size);
+            local_state.appender = make_uniq<ArrowAppender>(input.GetTypes(), data.chunk_size);
         }
 
         // Append input chunk
