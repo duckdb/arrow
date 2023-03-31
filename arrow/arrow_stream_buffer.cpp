@@ -34,7 +34,8 @@ ArrowIPCStreamBufferReader::ArrowIPCStreamBufferReader(std::shared_ptr<ArrowIPCS
 std::shared_ptr<arrow::Schema> ArrowIPCStreamBufferReader::schema() const {
 	return buffer_->schema();
 }
-/// Read the next record batch in the stream. Return null for batch when reaching end of stream
+/// Read the next record batch in the stream. Return null for batch when
+/// reaching end of stream
 arrow::Status ArrowIPCStreamBufferReader::ReadNext(std::shared_ptr<arrow::RecordBatch> *batch) {
 	if (next_batch_id_ >= buffer_->batches().size()) {
 		*batch = nullptr;
