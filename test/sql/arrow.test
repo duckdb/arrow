@@ -6,5 +6,7 @@
 #       serialized blobs to the scan_arrow_ipc function in SQL. Therefore tests of these features
 #       currently live in the NodeJS client tests.
 
+require arrow
+
 statement ok
 SELECT * FROM to_arrow_ipc((SELECT 'Its working!'));

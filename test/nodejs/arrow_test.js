@@ -2,8 +2,6 @@ var duckdb = require('../../duckdb/tools/nodejs');
 var arrow = require('../../duckdb/tools/nodejs/node_modules/apache-arrow')
 var assert = require('assert');
 
-const build = 'release';
-const extension_path = `../../../build/${build}/extension/arrow/arrow.duckdb_extension`;
 const parquet_file_path = "../../../data/parquet-testing/lineitem_sf0_01.parquet";
 
 // Wrapper for tests, materializes whole stream
@@ -30,17 +28,13 @@ const to_ipc_functions = {
     'materialized': arrow_ipc_materialized,
 }
 
-describe(`Arrow IPC Demo`, () => {
+describe(`Arrow IPC`, () => {
     let db;
     let conn;
     before((done) => {
         db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
         conn = new duckdb.Connection(db);
-
-        conn.run(`LOAD '${extension_path}';`, function (err) {
-            assert(!err);
-            done();
-        });
+        done()
     });
 
     it(`Basic examples`, async () => {
@@ -74,6 +68,7 @@ describe(`Arrow IPC Demo`, () => {
                 resolve(result);
             })
         });
+
         const reader3 = await arrow.RecordBatchReader.from(result_materialized);
         const table3 = await arrow.tableFromIPC(reader3);
         const array_from_arrow3 = table3.toArray();
@@ -92,6 +87,20 @@ describe(`Arrow IPC Demo`, () => {
             });
         });
     });
+
+    // Ensure we handle empty result properly
+    for (const [name, fun] of Object.entries(to_ipc_functions)) {
+        it(`Empty results (${name})`, async () => {
+            const range_size = 130000;
+            const query = `SELECT * FROM range(0,${range_size}) tbl(i) where i > ${range_size}`;
+
+            let ipc_buffers = await fun(conn, query);
+            const reader = await arrow.RecordBatchReader.from(ipc_buffers);
+            const table = await arrow.tableFromIPC(reader);
+            const arr = table.toArray();
+            assert.deepEqual(arr, []);
+        });
+    }
 })
 
 for (const [name, fun] of Object.entries(to_ipc_functions)) {
@@ -103,10 +112,7 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
         before((done) => {
             db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
             conn = new duckdb.Connection(db);
-            conn.run(`LOAD '${extension_path}';`, function (err) {
-                assert(!err);
-                done();
-            });
+            done()
         });
 
         it(`Buffers are not garbage collected`, async () => {
@@ -209,10 +215,7 @@ describe('[Benchmark] Arrow IPC Single Int Column (50M tuples)',() => {
         conn = new duckdb.Connection(db);
         conn.run("CREATE TABLE test AS select * FROM range(0,?) tbl(i);", column_size, (err) => {
             assert(!err);
-        });
-        conn.run(`LOAD '${extension_path}';`, function (err) {
-            assert(!err);
-            done();
+            done()
         });
     });
 
@@ -247,10 +250,7 @@ describe('Buffer registration',() => {
         db = new duckdb.Database(':memory:',  {"allow_unsigned_extensions":"true"});
         conn1 = new duckdb.Connection(db);
         conn2 = new duckdb.Connection(db);
-        conn1.run(`LOAD '${extension_path}';`, function (err) {
-            assert(!err);
-            done();
-        });
+        done();
     });
 
     it('Buffers can only be overwritten with force flag',  async () => {
@@ -364,16 +364,13 @@ describe('[Benchmark] Arrow IPC TPC-H lineitem.parquet', () => {
     const sql = "SELECT sum(l_extendedprice * l_discount) AS revenue FROM lineitem WHERE l_shipdate >= CAST('1994-01-01' AS date) AND l_shipdate < CAST('1995-01-01' AS date) AND l_discount BETWEEN 0.05 AND 0.07 AND l_quantity < 24"
     const answer = [{revenue: 1193053.2253}];
 
-	let db;
-	let conn;
+    let db;
+    let conn;
 
     before((done) => {
         db = new duckdb.Database(':memory:',  {"allow_unsigned_extensions":"true"});
         conn = new duckdb.Connection(db);
-        conn.run(`LOAD '${extension_path}';`, function (err) {
-            assert(!err);
-            done();
-        });
+        done();
     });
 
     it('Parquet -> DuckDB Streaming-> Arrow IPC -> DuckDB Query', async () => {
@@ -460,10 +457,7 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
         before((done) => {
             db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
             conn = new duckdb.Connection(db);
-            conn.run(`LOAD '${extension_path}';`, function (err) {
-                assert(!err);
-                done();
-            });
+            done();
         });
 
         for (const query of queries) {
@@ -501,3 +495,5 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
         }
     })
 }
+
+

@@ -87,6 +87,9 @@ OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, Table
 
     bool sending_schema = false;
 
+    bool caching_disabled = context.pipeline && !context.pipeline->GetSink();
+//    bool caching_disabled = true;
+
     if (!local_state.checked_schema) {
         if (!global_state.sent_schema) {
             lock_guard<mutex> init_lock(global_state.lock);
@@ -113,7 +116,7 @@ OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, Table
         local_state.current_count += input.size();
 
         // If chunk size is reached, we can flush to IPC blob
-        if (local_state.current_count >= data.chunk_size) {
+        if (caching_disabled || local_state.current_count >= data.chunk_size) {
             // Construct record batch from DataChunk
             ArrowArray arr = local_state.appender->Finalize();
             auto record_batch = arrow::ImportRecordBatch(&arr, data.schema).ValueOrDie();
