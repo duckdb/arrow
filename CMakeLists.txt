@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 2.8.12)
 
 # Set extension name here
 set(TARGET_NAME arrow)
@@ -24,7 +24,7 @@ endif()
 # Building Arrow
 include(ExternalProject)
 ExternalProject_Add(
-        arrow_ep
+        ARROW_EP
         GIT_REPOSITORY "https://github.com/apache/arrow"
         GIT_TAG ea6875fd2a3ac66547a9a33c5506da94f3ff07f2
         PREFIX "${CMAKE_BINARY_DIR}/third_party/arrow"
@@ -53,19 +53,24 @@ ExternalProject_Add(
         CMAKE_ARGS -Wno-dev
         UPDATE_COMMAND "")
 
-ExternalProject_Get_Property(arrow_ep install_dir)
-include_directories(${install_dir}/include)
+ExternalProject_Get_Property(ARROW_EP install_dir)
 add_library(arrow STATIC IMPORTED GLOBAL)
 set_target_properties(arrow PROPERTIES IMPORTED_LOCATION ${install_dir}/lib/libarrow.a)
 
-add_dependencies(${EXTENSION_NAME} arrow_ep)
+# link arrow to extension
 target_link_libraries(${EXTENSION_NAME} PUBLIC arrow)
 
 set(PARAMETERS "-warnings")
 build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${EXTENSION_SOURCES})
 
+# make both the lib and loadable extension depend on the arrow lib and add the includes to both
+add_dependencies(${EXTENSION_NAME} ARROW_EP)
+add_dependencies(${TARGET_NAME}_loadable_extension ARROW_EP)
+target_include_directories(${EXTENSION_NAME} PRIVATE ${install_dir}/include)
+target_include_directories(${TARGET_NAME}_loadable_extension PRIVATE ${install_dir}/include)
+
 install(
-  TARGETS ${EXTENSION_NAME}
-  EXPORT "${DUCKDB_EXPORT_SET}"
-  LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
-  ARCHIVE DESTINATION "${INSTALL_LIB_DIR}")
+        TARGETS ${EXTENSION_NAME}
+        EXPORT "${DUCKDB_EXPORT_SET}"
+        LIBRARY DESTINATION "${INSTALL_LIB_DIR}"
+        ARCHIVE DESTINATION "${INSTALL_LIB_DIR}")
