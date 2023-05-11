@@ -13,8 +13,6 @@ set(EXTENSION_SOURCES
         src/arrow_scan_ipc.cpp
         src/arrow_to_ipc.cpp)
 
-add_library(${EXTENSION_NAME} STATIC ${EXTENSION_SOURCES})
-
 if(OSX_BUILD_UNIVERSAL EQUAL 1)
     set(OSX_UNIVERSAL_FLAG -DCMAKE_OSX_ARCHITECTURES=x86_64$<SEMICOLON>arm64)
 else()
@@ -57,16 +55,17 @@ ExternalProject_Get_Property(ARROW_EP install_dir)
 add_library(arrow STATIC IMPORTED GLOBAL)
 set_target_properties(arrow PROPERTIES IMPORTED_LOCATION ${install_dir}/lib/libarrow.a)
 
-# link arrow to extension
+# create static library
+add_library(${EXTENSION_NAME} STATIC ${EXTENSION_SOURCES})
+add_dependencies(${EXTENSION_NAME} ARROW_EP)
 target_link_libraries(${EXTENSION_NAME} PUBLIC arrow)
+target_include_directories(${EXTENSION_NAME} PRIVATE ${install_dir}/include)
 
+# create loadable extension
 set(PARAMETERS "-warnings")
 build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${EXTENSION_SOURCES})
-
-# make both the lib and loadable extension depend on the arrow lib and add the includes to both
-add_dependencies(${EXTENSION_NAME} ARROW_EP)
 add_dependencies(${TARGET_NAME}_loadable_extension ARROW_EP)
-target_include_directories(${EXTENSION_NAME} PRIVATE ${install_dir}/include)
+target_link_libraries(${TARGET_NAME}_loadable_extension arrow)
 target_include_directories(${TARGET_NAME}_loadable_extension PRIVATE ${install_dir}/include)
 
 install(
