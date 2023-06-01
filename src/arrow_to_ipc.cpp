@@ -74,6 +74,7 @@ unique_ptr<FunctionData> ToArrowIPCFunction::Bind(ClientContext &context, TableF
     auto tz = context.GetClientProperties().time_zone;
     ArrowSchema schema;
     ArrowOptions options;
+    options.timezone = context.GetClientProperties().time_zone;
     options.offset_size = ArrowOffsetSize::REGULAR;
     ArrowConverter::ToArrowSchema(&schema, input.input_table_types, input.input_table_names, tz, options);
     result->schema = arrow::ImportSchema(&schema).ValueOrDie();
