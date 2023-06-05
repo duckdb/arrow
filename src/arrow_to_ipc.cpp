@@ -22,6 +22,7 @@
 #include "duckdb/common/arrow/arrow_converter.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/function/table/arrow.hpp"
+#include "duckdb/common/arrow/arrow_options.hpp"
 #endif
 
 namespace duckdb {
@@ -72,7 +73,10 @@ unique_ptr<FunctionData> ToArrowIPCFunction::Bind(ClientContext &context, TableF
     // Create the Arrow schema
     auto tz = context.GetClientProperties().time_zone;
     ArrowSchema schema;
-    ArrowConverter::ToArrowSchema(&schema, input.input_table_types, input.input_table_names, tz);
+    ArrowOptions options;
+    options.timezone = context.GetClientProperties().time_zone;
+    options.offset_size = ArrowOffsetSize::REGULAR;
+    ArrowConverter::ToArrowSchema(&schema, input.input_table_types, input.input_table_names, tz, options);
     result->schema = arrow::ImportSchema(&schema).ValueOrDie();
 
     return std::move(result);
@@ -88,6 +92,8 @@ OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, Table
     bool sending_schema = false;
 
     bool caching_disabled = context.pipeline && !context.pipeline->GetSink();
+    ArrowOptions options;
+    options.offset_size = ArrowOffsetSize::REGULAR;
 //    bool caching_disabled = true;
 
     if (!local_state.checked_schema) {
@@ -108,7 +114,7 @@ OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, Table
         output.data[1].SetValue(0, Value::BOOLEAN(1));
     } else {
         if (!local_state.appender) {
-            local_state.appender = make_uniq<ArrowAppender>(input.GetTypes(), data.chunk_size);
+            local_state.appender = make_uniq<ArrowAppender>(input.GetTypes(), data.chunk_size, options);
         }
 
         // Append input chunk
