@@ -71,12 +71,11 @@ unique_ptr<FunctionData> ToArrowIPCFunction::Bind(ClientContext &context, TableF
     names.emplace_back("header");
 
     // Create the Arrow schema
-    auto tz = context.GetClientProperties().time_zone;
     ArrowSchema schema;
     ArrowOptions options;
-    options.timezone = context.GetClientProperties().time_zone;
+    options.time_zone = context.GetClientProperties().time_zone;
     options.offset_size = ArrowOffsetSize::REGULAR;
-    ArrowConverter::ToArrowSchema(&schema, input.input_table_types, input.input_table_names, tz, options);
+    ArrowConverter::ToArrowSchema(&schema, input.input_table_types, input.input_table_names, options);
     result->schema = arrow::ImportSchema(&schema).ValueOrDie();
 
     return std::move(result);
