@@ -28,8 +28,11 @@ jobs:
           git config --global --add safe.directory '*'
           make pull
 
-      - name: Build DuckDB
+      - name: Install Node
         run: |
           cd duckdb
           source scripts/install_node.sh 16
+
+      - name: Build & Test
+        run: |
           make test_debug_js
