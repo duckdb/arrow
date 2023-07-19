@@ -13,10 +13,10 @@ set(EXTENSION_SOURCES
         src/arrow_scan_ipc.cpp
         src/arrow_to_ipc.cpp)
 
-if(OSX_BUILD_UNIVERSAL EQUAL 1)
-    set(OSX_UNIVERSAL_FLAG -DCMAKE_OSX_ARCHITECTURES=x86_64$<SEMICOLON>arm64)
+if(NOT "${OSX_BUILD_ARCH}" STREQUAL "")
+    set(OSX_ARCH_FLAG -DCMAKE_OSX_ARCHITECTURES=${OSX_BUILD_ARCH})
 else()
-    set(OSX_UNIVERSAL_FLAG "")
+    set(OSX_ARCH_FLAG "")
 endif()
 
 # Building Arrow
@@ -29,7 +29,7 @@ ExternalProject_Add(
         INSTALL_DIR "${CMAKE_BINARY_DIR}/third_party/arrow/install"
         BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libarrow.a
         CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -G${CMAKE_GENERATOR} ${OSX_UNIVERSAL_FLAG}
+        ${CMAKE_COMMAND} -G${CMAKE_GENERATOR} ${OSX_ARCH_FLAG}
         -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/third_party/arrow/install
         -DCMAKE_INSTALL_LIBDIR=lib -DARROW_BUILD_STATIC=ON -DARROW_BUILD_SHARED=OFF
