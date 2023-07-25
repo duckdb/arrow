@@ -20,13 +20,10 @@ jobs:
         include:
           - arch: 'linux_amd64_gcc4'
             container: 'quay.io/pypa/manylinux2014_x86_64'
-            static_link: 0
           - arch: 'linux_amd64'
             container: 'ubuntu:18.04'
-            static_link: 1
           - arch: 'linux_arm64'
             container: 'ubuntu:18.04'
-            static_link: 0
     env:
       GEN: Ninja
 
@@ -78,11 +75,10 @@ jobs:
         STATIC_LIBCPP: 1
         CC: ${{ matrix.arch == 'linux_arm64' && 'aarch64-linux-gnu-gcc' || '' }}
         CXX: ${{ matrix.arch == 'linux_arm64' && 'aarch64-linux-gnu-g++' || '' }}
-        DISABLE_EXTENSION_LOAD: ${{ matrix.static_load == 0 && 1 || 0}}
       run: |
         make release
 
     - name: Test extension
-      if: ${{ matrix.arch != 'linux_arm64' && matrix.static_load == 1}}
+      if: ${{ matrix.arch != 'linux_arm64'}}
       run: |
         make test

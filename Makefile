@@ -27,7 +27,13 @@ BUILD_FLAGS=-DEXTENSION_STATIC_BUILD=1 -DBUILD_EXTENSIONS="" ${OSX_BUILD_ARCH_FL
 CLIENT_FLAGS :=
 
 # These flags will make DuckDB build the extension
-EXTENSION_FLAGS=-DDUCKDB_EXTENSION_NAMES="arrow" -DDUCKDB_EXTENSION_ARROW_PATH="$(PROJ_DIR)" -DDUCKDB_EXTENSION_ARROW_SHOULD_LINK=1 -DDUCKDB_EXTENSION_ARROW_INCLUDE_PATH="$(PROJ_DIR)src/include"
+EXTENSION_FLAGS=\
+-DDUCKDB_EXTENSION_NAMES="arrow" \
+-DDUCKDB_EXTENSION_ARROW_PATH="$(PROJ_DIR)" \
+-DDUCKDB_EXTENSION_ARROW_SHOULD_LINK=0 \
+-DDUCKDB_EXTENSION_ARROW_LOAD_TESTS=1 \
+-DDUCKDB_EXTENSION_ARROW_TEST_PATH=$(PROJ_DIR)test \
+-DDUCKDB_EXTENSION_ARROW_INCLUDE_PATH="$(PROJ_DIR)src/include"
 
 pull:
 	git submodule init
@@ -72,10 +78,10 @@ release_python: release
 test: test_release
 
 test_release: release
-	./build/release/test/unittest --test-dir . "[sql]"
+	./build/release/test/unittest "$(PROJ_DIR)test/*"
 
 test_debug: debug
-	./build/debug/test/unittest --test-dir . "[sql]"
+	./build/release/test/unittest "$(PROJ_DIR)test/*"
 
 # Client tests
 test_js: test_debug_js
