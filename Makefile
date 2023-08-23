@@ -70,12 +70,13 @@ test_debug: debug
 	./build/release/test/unittest "$(PROJ_DIR)test/*"
 
 # Client tests
+DEBUG_EXT_PATH='$(PROJ_DIR)build/debug/extension/arrow/arrow.duckdb_extension'
+RELEASE_EXT_PATH='$(PROJ_DIR)build/debug/extension/arrow/arrow.duckdb_extension'
 test_js: test_debug_js
 test_debug_js: debug_js
-	cd duckdb/tools/nodejs && npm run test-path -- "../../../test/nodejs/**/*.js"
-
+	cd duckdb/tools/nodejs && ARROW_EXTENSION_BINARY_PATH=$(DEBUG_EXT_PATH) npm run test-path -- "../../../test/nodejs/**/*.js"
 test_release_js: release_js
-	cd duckdb/tools/nodejs && npm run test-path -- "../../../test/nodejs/**/*.js"
+	cd duckdb/tools/nodejs && ARROW_EXTENSION_BINARY_PATH=$(DEBUG_EXT_PATH) npm run test-path -- "../../../test/nodejs/**/*.js"
 
 format:
 	find src/ -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i
