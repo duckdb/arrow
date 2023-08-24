@@ -265,6 +265,13 @@ describe('Buffer registration',() => {
         done();
     });
 
+    before((done) => {
+        db = getDatabase();
+        conn1 = getConnection(db, () => {
+            conn2 = getConnection(db, () => done());
+        })
+    });
+
     it('Buffers can only be overwritten with force flag',  async () => {
         const arrow_buffer = await arrow_ipc_materialized(conn1, "SELECT 1337 as a");
 
