@@ -31,6 +31,7 @@ EXTENSION_FLAGS=\
 -DDUCKDB_EXTENSION_NAMES="arrow" \
 -DDUCKDB_EXTENSION_ARROW_PATH="$(PROJ_DIR)" \
 -DDUCKDB_EXTENSION_ARROW_LOAD_TESTS=1 \
+-DDUCKDB_EXTENSION_ARROW_SHOULD_LINK=0 \
 -DDUCKDB_EXTENSION_ARROW_TEST_PATH=$(PROJ_DIR)test \
 -DDUCKDB_EXTENSION_ARROW_INCLUDE_PATH="$(PROJ_DIR)src/include"
 
@@ -46,18 +47,18 @@ clean:
 # Main build
 debug:
 	mkdir -p  build/debug && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) -DDUCKDB_EXTENSION_ARROW_SHOULD_LINK=0 ${CLIENT_FLAGS} ${CMAKE_VARS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Debug ${BUILD_FLAGS} -S ./duckdb/ -B build/debug && \
+	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) ${CLIENT_FLAGS} ${CMAKE_VARS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Debug ${BUILD_FLAGS} -S ./duckdb/ -B build/debug && \
 	cmake --build build/debug --config Debug
 
 release:
 	mkdir -p build/release && \
-	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) -DDUCKDB_EXTENSION_ARROW_SHOULD_LINK=0 ${CLIENT_FLAGS} ${CMAKE_VARS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Release ${BUILD_FLAGS} -S ./duckdb/ -B build/release && \
+	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) ${CLIENT_FLAGS} ${CMAKE_VARS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Release ${BUILD_FLAGS} -S ./duckdb/ -B build/release && \
 	cmake --build build/release --config Release
 
 # Client build
-debug_js: CLIENT_FLAGS=-DBUILD_NODE=1 -DBUILD_EXTENSIONS=json -DDUCKDB_EXTENSION_ARROW_SHOULD_LINK=1
+debug_js: CLIENT_FLAGS=-DBUILD_NODE=1
 debug_js: debug
-release_js: CLIENT_FLAGS=-DBUILD_NODE=1 -DBUILD_EXTENSIONS=json -DDUCKDB_EXTENSION_ARROW_SHOULD_LINK=1
+release_js: CLIENT_FLAGS=-DBUILD_NODE=1
 release_js: release
 
 # Main tests
@@ -70,12 +71,13 @@ test_debug: debug
 	./build/release/test/unittest "$(PROJ_DIR)test/*"
 
 # Client tests
+DEBUG_EXT_PATH='$(PROJ_DIR)build/debug/extension/arrow/arrow.duckdb_extension'
+RELEASE_EXT_PATH='$(PROJ_DIR)build/debug/extension/arrow/arrow.duckdb_extension'
 test_js: test_debug_js
 test_debug_js: debug_js
-	cd duckdb/tools/nodejs && npm run test-path -- "../../../test/nodejs/**/*.js"
-
+	cd duckdb/tools/nodejs && ARROW_EXTENSION_BINARY_PATH=$(DEBUG_EXT_PATH) npm run test-path -- "../../../test/nodejs/**/*.js"
 test_release_js: release_js
-	cd duckdb/tools/nodejs && npm run test-path -- "../../../test/nodejs/**/*.js"
+	cd duckdb/tools/nodejs && ARROW_EXTENSION_BINARY_PATH=$(DEBUG_EXT_PATH) npm run test-path -- "../../../test/nodejs/**/*.js"
 
 format:
 	find src/ -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i

@@ -28,13 +28,25 @@ const to_ipc_functions = {
     'materialized': arrow_ipc_materialized,
 }
 
+function getDatabase() {
+    return new duckdb.Database(':memory:', {"allow_unsigned_extensions":"true"});
+}
+
+function getConnection(db, done) {
+    let conn = new duckdb.Connection(db);
+    conn.exec(`LOAD '${process.env.ARROW_EXTENSION_BINARY_PATH}';`, function (err) {
+        if (err) throw err;
+        done();
+    });
+    return conn
+}
+
 describe(`Arrow IPC`, () => {
     let db;
     let conn;
     before((done) => {
-        db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
-        conn = new duckdb.Connection(db);
-        done()
+        db = getDatabase();
+        conn = getConnection(db, () => done())
     });
 
     it(`Basic examples`, async () => {
@@ -110,9 +122,8 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
         let db;
         let conn;
         before((done) => {
-            db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
-            conn = new duckdb.Connection(db);
-            done()
+            db = getDatabase();
+            conn = getConnection(db, () => done())
         });
 
         it(`Buffers are not garbage collected`, async () => {
@@ -211,12 +222,13 @@ describe('[Benchmark] Arrow IPC Single Int Column (50M tuples)',() => {
     let conn;
 
     before((done) => {
-        db = new duckdb.Database(':memory:',  {"allow_unsigned_extensions":"true"});
-        conn = new duckdb.Connection(db);
-        conn.run("CREATE TABLE test AS select * FROM range(0,?) tbl(i);", column_size, (err) => {
-            assert(!err);
-            done()
-        });
+        db = getDatabase();
+        conn = getConnection(db, () => {
+            conn.run("CREATE TABLE test AS select * FROM range(0,?) tbl(i);", column_size, (err) => {
+                if (err) throw err;
+                done()
+            });
+        })
     });
 
     it('DuckDB table -> DuckDB table', (done) => {
@@ -251,6 +263,13 @@ describe('Buffer registration',() => {
         conn1 = new duckdb.Connection(db);
         conn2 = new duckdb.Connection(db);
         done();
+    });
+
+    before((done) => {
+        db = getDatabase();
+        conn1 = getConnection(db, () => {
+            conn2 = getConnection(db, () => done());
+        })
     });
 
     it('Buffers can only be overwritten with force flag',  async () => {
@@ -368,9 +387,8 @@ describe('[Benchmark] Arrow IPC TPC-H lineitem.parquet', () => {
     let conn;
 
     before((done) => {
-        db = new duckdb.Database(':memory:',  {"allow_unsigned_extensions":"true"});
-        conn = new duckdb.Connection(db);
-        done();
+        db = getDatabase();
+        conn = getConnection(db, () => done())
     });
 
     it('Parquet -> DuckDB Streaming-> Arrow IPC -> DuckDB Query', async () => {
@@ -455,9 +473,8 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
         let db;
         let conn;
         before((done) => {
-            db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
-            conn = new duckdb.Connection(db);
-            done();
+            db = getDatabase();
+            conn = getConnection(db, () => done())
         });
 
         for (const query of queries) {
