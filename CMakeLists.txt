@@ -24,11 +24,15 @@ else()
 endif()
 
 if(WIN32)
+    message("MSG: setting initial vars for WIN32")
     set(BYPRODUCT_LIB_FILE arrow_static.lib)
     set(DUCKDB_EXTRA_LINK_FLAGS arrow)
 else()
+    message("MSG: setting initial vars for NOT windows")
     set(BYPRODUCT_LIB_FILE libarrow.a)
 endif()
+
+message("MSG: BYPRODUCT_LIB_FILE is: ${BYPRODUCT_LIB_FILE}")
 
 # Building Arrow
 include(ExternalProject)
@@ -60,7 +64,6 @@ ExternalProject_Add(
         -DARROW_WITH_ZSTD=OFF -DARROW_WITH_UCX=OFF -DARROW_WITH_UTF8PROC=OFF
         -DARROW_WITH_RE2=OFF <SOURCE_DIR>/cpp
         CMAKE_ARGS -Wno-dev
-        -DARROW_STATIC=1 # Add your preprocessor macro here
         UPDATE_COMMAND "")
 
 ExternalProject_Get_Property(ARROW_EP install_dir)
@@ -71,6 +74,7 @@ set_target_properties(arrow PROPERTIES IMPORTED_LOCATION ${install_dir}/lib/${BY
 add_library(${EXTENSION_NAME} STATIC ${EXTENSION_SOURCES})
 add_dependencies(${EXTENSION_NAME} ARROW_EP)
 if(WIN32)
+    message("MSG: Adding compile macro to EXTENSION_NAME")
     target_compile_definitions(${EXTENSION_NAME} PRIVATE ARROW_STATIC)
 endif()
 target_link_libraries(${EXTENSION_NAME} PUBLIC arrow)
@@ -82,6 +86,7 @@ set(PARAMETERS "-warnings")
 build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${EXTENSION_SOURCES})
 add_dependencies(${TARGET_NAME}_loadable_extension ARROW_EP)
 if(WIN32)
+    message("MSG: Adding compile def to TARGET_NAME")
     target_compile_definitions(${TARGET_NAME}_loadable_extension PUBLIC ARROW_STATIC)
 endif()
 target_include_directories(${TARGET_NAME}_loadable_extension PRIVATE ${install_dir}/include)
