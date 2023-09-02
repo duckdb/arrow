@@ -19,6 +19,10 @@ else()
     set(OSX_ARCH_FLAG "")
 endif()
 
+if(WIN32)
+    set(DUCKDB_EXTRA_LINK_FLAGS arrow)
+endif()
+
 # Building Arrow
 include(ExternalProject)
 ExternalProject_Add(
