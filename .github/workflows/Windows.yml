@@ -36,12 +36,10 @@ jobs:
           git checkout ${{ matrix.duckdb_version }}
 
       - name: Build extension
-        # using debug for quick testing for now
         run: |
-          make debug
+          make release
 
       - name: Test Extension
         shell: bash
-        # using debug for quick testing for now
         run: |
-          build/debug/test/Debug/unittest.exe --test-dir . "[sql]"
+          build/release/test/Release/unittest.exe --test-dir . "[sql]"
