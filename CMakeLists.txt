@@ -25,11 +25,11 @@ endif()
 
 if(WIN32)
     message("MSG: setting initial vars for WIN32")
-    set(BYPRODUCT_LIB_FILE arrow_static.lib)
-    set(DUCKDB_EXTRA_LINK_FLAGS arrow)
+    # set(BYPRODUCT_LIB_FILE "arrow_static.lib")
+    # set(DUCKDB_EXTRA_LINK_FLAGS arrow)
 else()
     message("MSG: setting initial vars for NOT windows")
-    set(BYPRODUCT_LIB_FILE libarrow.a)
+    set(BYPRODUCT_LIB_FILE "libarrow.a")
 endif()
 
 message("MSG: BYPRODUCT_LIB_FILE is: ${BYPRODUCT_LIB_FILE}")
@@ -42,7 +42,7 @@ ExternalProject_Add(
         GIT_TAG ea6875fd2a3ac66547a9a33c5506da94f3ff07f2
         PREFIX "${CMAKE_BINARY_DIR}/third_party/arrow"
         INSTALL_DIR "${CMAKE_BINARY_DIR}/third_party/arrow/install"
-        BUILD_BYPRODUCTS <INSTALL_DIR>/lib/${BYPRODUCT_LIB_FILE}
+        BUILD_BYPRODUCTS "<INSTALL_DIR>/lib/${BYPRODUCT_LIB_FILE}"
         CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -G${CMAKE_GENERATOR} ${OSX_ARCH_FLAG}
         -DCMAKE_BUILD_TYPE=Release
@@ -68,14 +68,14 @@ ExternalProject_Add(
 
 ExternalProject_Get_Property(ARROW_EP install_dir)
 add_library(arrow STATIC IMPORTED GLOBAL)
-set_target_properties(arrow PROPERTIES IMPORTED_LOCATION ${install_dir}/lib/${BYPRODUCT_LIB_FILE})
+set_target_properties(arrow PROPERTIES IMPORTED_LOCATION "${install_dir}/lib/${BYPRODUCT_LIB_FILE}")
 
 # create static library
 add_library(${EXTENSION_NAME} STATIC ${EXTENSION_SOURCES})
 add_dependencies(${EXTENSION_NAME} ARROW_EP)
 if(WIN32)
     message("MSG: Adding compile macro to EXTENSION_NAME")
-    target_compile_definitions(${EXTENSION_NAME} PRIVATE ARROW_STATIC)
+    # target_compile_definitions(${EXTENSION_NAME} PRIVATE ARROW_STATIC)
 endif()
 target_link_libraries(${EXTENSION_NAME} PUBLIC arrow)
 target_include_directories(${EXTENSION_NAME} PRIVATE ${install_dir}/include)
@@ -87,7 +87,7 @@ build_loadable_extension(${TARGET_NAME} ${PARAMETERS} ${EXTENSION_SOURCES})
 add_dependencies(${TARGET_NAME}_loadable_extension ARROW_EP)
 if(WIN32)
     message("MSG: Adding compile def to TARGET_NAME")
-    target_compile_definitions(${TARGET_NAME}_loadable_extension PUBLIC ARROW_STATIC)
+    # target_compile_definitions(${TARGET_NAME}_loadable_extension PUBLIC ARROW_STATIC)
 endif()
 target_include_directories(${TARGET_NAME}_loadable_extension PRIVATE ${install_dir}/include)
 
