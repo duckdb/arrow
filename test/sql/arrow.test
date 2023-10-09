@@ -10,3 +10,15 @@ require arrow
 
 statement ok
 SELECT * FROM to_arrow_ipc((SELECT 'Its working!'));
+
+# Test operator caching behaviour is sane
+statement ok
+create table data as select * from range(0,2000) tbl(col)
+
+statement ok
+WITH data_union AS (
+    SELECT * FROM data
+    UNION ALL
+    SELECT * FROM data
+)
+SELECT * FROM to_arrow_ipc((SELECT * FROM data_union ORDER BY col));

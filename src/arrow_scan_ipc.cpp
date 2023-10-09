@@ -8,12 +8,11 @@ TableFunction ArrowIPCTableFunction::GetFunction() {
 
     TableFunction scan_arrow_ipc_func(
             "scan_arrow_ipc", {LogicalType::LIST(LogicalType::STRUCT(make_buffer_struct_children))},
-            ArrowIPCTableFunction::ArrowScanFunction, ArrowIPCTableFunction::ArrowScanBind,
-            ArrowTableFunction::ArrowScanInitGlobal, ArrowTableFunction::ArrowScanInitLocal);
+        ArrowIPCTableFunction::ArrowScanFunction, ArrowIPCTableFunction::ArrowScanBind,
+        ArrowTableFunction::ArrowScanInitGlobal, ArrowTableFunction::ArrowScanInitLocal);
 
     scan_arrow_ipc_func.cardinality = ArrowTableFunction::ArrowScanCardinality;
-    // FIXME this currently does not work yet
-//    scan_arrow_ipc_func.get_batch_index = ArrowTableFunction::ArrowGetBatchIndex;
+    scan_arrow_ipc_func.get_batch_index = nullptr; // TODO implement
     scan_arrow_ipc_func.projection_pushdown = true;
     scan_arrow_ipc_func.filter_pushdown = false;
 
@@ -80,7 +79,7 @@ unique_ptr <FunctionData> ArrowIPCTableFunction::ArrowScanBind(ClientContext &co
     return std::move(res);
 }
 
-// TODO: cleanup: only difference is the ArrowToDuckDB call
+// Same as regular arrow scan, except ArrowToDuckDB call TODO: refactor to allow nicely overriding this
 void ArrowIPCTableFunction::ArrowScanFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
     if (!data_p.local_state) {
         return;
@@ -90,16 +89,23 @@ void ArrowIPCTableFunction::ArrowScanFunction(ClientContext &context, TableFunct
     auto &global_state = data_p.global_state->Cast<ArrowScanGlobalState>();
 
     //! Out of tuples in this chunk
-    if (state.chunk_offset >= (idx_t) state.chunk->arrow_array.length) {
-        if (!ArrowTableFunction::ArrowScanParallelStateNext(context, data_p.bind_data.get(), state, global_state)) {
+    if (state.chunk_offset >= (idx_t)state.chunk->arrow_array.length) {
+        if (!ArrowScanParallelStateNext(context, data_p.bind_data.get(), state, global_state)) {
             return;
         }
     }
-    int64_t output_size =
-            MinValue<int64_t>(STANDARD_VECTOR_SIZE, state.chunk->arrow_array.length - state.chunk_offset);
+    int64_t output_size = MinValue<int64_t>(STANDARD_VECTOR_SIZE, state.chunk->arrow_array.length - state.chunk_offset);
     data.lines_read += output_size;
-    output.SetCardinality(output_size);
-    ArrowTableFunction::ArrowToDuckDB(state, data.arrow_table.GetColumns(), output, data.lines_read - output_size, false);
+    if (global_state.CanRemoveFilterColumns()) {
+        state.all_columns.Reset();
+        state.all_columns.SetCardinality(output_size);
+        ArrowToDuckDB(state, data.arrow_table.GetColumns(), state.all_columns, data.lines_read - output_size, false);
+        output.ReferenceColumns(state.all_columns, global_state.projection_ids);
+    } else {
+        output.SetCardinality(output_size);
+        ArrowToDuckDB(state, data.arrow_table.GetColumns(), output, data.lines_read - output_size, false);
+    }
+
     output.Verify();
     state.chunk_offset += output.size();
 }

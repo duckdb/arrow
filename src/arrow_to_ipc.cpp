@@ -87,7 +87,7 @@ OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context, Table
 
     bool sending_schema = false;
 
-    bool caching_disabled = context.pipeline && !context.pipeline->GetSink();
+    bool caching_disabled = !PhysicalOperator::OperatorCachingAllowed(context);
 
     if (!local_state.checked_schema) {
         if (!global_state.sent_schema) {
