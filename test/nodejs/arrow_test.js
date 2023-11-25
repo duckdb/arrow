@@ -211,6 +211,24 @@ for (const [name, fun] of Object.entries(to_ipc_functions)) {
                 });
             });
         });
+
+        it(`Registering multiple IPC buffers for the same table in DuckDB`, async () => {
+            const table = await fun(db, 'SELECT * FROM range(1, 10000) tbl(i)');
+
+            db.register_buffer("table1", table, true, (err) => {
+                assert(!err);
+            });
+        });
+
+        it(`Registering IPC buffers for two different tables fails`, async () => {
+            const ipc_buffers1 = await fun(db, 'SELECT * FROM range(1, 3) tbl(i)');
+            const ipc_buffers2 = await fun(db, 'SELECT * FROM range(2, 4) tbl(i)');
+
+            // This will fail when reading buffers for the second table
+            db.register_buffer("table1", [...ipc_buffers1, ...ipc_buffers2], true, (err) => {
+                assert(err);
+            });
+        });
     })
 }
 
