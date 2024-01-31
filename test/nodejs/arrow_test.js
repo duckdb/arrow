@@ -1,8 +1,8 @@
-var duckdb = require('../../duckdb/tools/nodejs');
-var arrow = require('../../duckdb/tools/nodejs/node_modules/apache-arrow')
+var arrow = require('apache-arrow')
+var duckdb = require('duckdb');
 var assert = require('assert');
 
-const parquet_file_path = "../../../data/parquet-testing/lineitem_sf0_01.parquet";
+const parquet_file_path = "data/parquet-testing/lineitem_sf0_01.parquet";
 
 // Wrapper for tests, materializes whole stream
 const arrow_ipc_stream = async (conn, sql) => {
