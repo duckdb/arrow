@@ -56,12 +56,6 @@ release:
 	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) ${CLIENT_FLAGS} ${CMAKE_VARS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Release ${BUILD_FLAGS} -S ./duckdb/ -B build/release && \
 	cmake --build build/release --config Release
 
-# Client build
-debug_js: CLIENT_FLAGS=-DBUILD_NODE=1
-debug_js: debug
-release_js: CLIENT_FLAGS=-DBUILD_NODE=1
-release_js: release
-
 # Main tests
 test: test_release
 
@@ -74,11 +68,11 @@ test_debug: debug
 # Client tests
 DEBUG_EXT_PATH='$(PROJ_DIR)build/debug/extension/arrow/arrow.duckdb_extension'
 RELEASE_EXT_PATH='$(PROJ_DIR)build/release/extension/arrow/arrow.duckdb_extension'
-test_js: test_debug_js
-test_debug_js: debug_js
-	cd duckdb/tools/nodejs && ARROW_EXTENSION_BINARY_PATH=$(DEBUG_EXT_PATH) npm run test-path -- "../../../test/nodejs/**/*.js"
-test_release_js: release_js
-	cd duckdb/tools/nodejs && ARROW_EXTENSION_BINARY_PATH=$(RELEASE_EXT_PATH) npm run test-path -- "../../../test/nodejs/**/*.js"
+test_js:
+test_debug_js:
+	ARROW_EXTENSION_BINARY_PATH=$(DEBUG_EXT_PATH) mocha -R spec --timeout 480000 -n expose-gc --exclude 'test/*.ts' -- "test/nodejs/**/*.js"
+test_release_js:
+	ARROW_EXTENSION_BINARY_PATH=$(RELEASE_EXT_PATH) mocha -R spec --timeout 480000 -n expose-gc --exclude 'test/*.ts' -- "test/nodejs/**/*.js"
 
 format:
 	find src/ -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i

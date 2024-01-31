@@ -18,21 +18,28 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+          submodules: 'true'
 
       - uses: actions/setup-python@v2
         with:
           python-version: '3.9'
 
-      - name: Update DuckDB submodule
-        run: |
-          git config --global --add safe.directory '*'
-          make pull
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Install Node
+      - name: Install required node packages
         run: |
-          cd duckdb
-          source scripts/install_node.sh 16
+          sudo npm install -g duckdb apache-arrow mocha
+          sudo npm install duckdb apache-arrow mocha
+          npm -v
+          node -v
 
-      - name: Build & Test
+
+      - name: Build duckdb
         run: |
-          make test_debug_js
+          make
+
+      - name: Run JS tests
+        run: |
+          make test_release_js
