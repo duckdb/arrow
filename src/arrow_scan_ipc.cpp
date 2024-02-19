@@ -30,6 +30,10 @@ unique_ptr <FunctionData> ArrowIPCTableFunction::ArrowScanBind(ClientContext &co
         uint64_t ptr = unpacked[0].GetValue<uint64_t>();
         uint64_t size = unpacked[1].GetValue<uint64_t>();
 
+        if (stream_decoder->buffer()->is_eos()) {
+            throw IOException("More IPC buffers passed while the stream has already ended");
+        }
+
         // Feed stream into decoder
         auto res = stream_decoder->Consume((const uint8_t *) ptr, size);
 
