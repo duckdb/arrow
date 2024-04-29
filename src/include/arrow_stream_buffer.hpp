@@ -1,93 +1,70 @@
 #pragma once
 
-#include "duckdb/common/arrow/arrow_wrapper.hpp"
-#include "duckdb/function/table/arrow.hpp"
-#include "duckdb/planner/table_filter.hpp"
-#include "arrow/ipc/reader.h"
-#include "arrow/record_batch.h"
-#include "arrow/result.h"
-#include "arrow/status.h"
-#include "arrow/type.h"
-#include "arrow/type_fwd.h"
-#include "arrow/c/bridge.h"
-
 #include <string>
 #include <unordered_map>
 #include <iostream>
 #include <memory>
 
-/// File copied from
-/// https://github.com/duckdb/duckdb-wasm/blob/0ad10e7db4ef4025f5f4120be37addc4ebe29618/lib/include/duckdb/web/arrow_stream_buffer.h
+// >> DuckDB dependencies
+#include "duckdb/common/arrow/arrow_wrapper.hpp"
+#include "duckdb/function/table/arrow.hpp"
+#include "duckdb/planner/table_filter.hpp"
+
+// >> Arrow dependencies
+#include "arrow/type_fwd.h"
+#include "arrow/type.h"
+#include "arrow/status.h"
+#include "arrow/result.h"
+#include "arrow/record_batch.h"
+
+#include "arrow/ipc/reader.h"
+#include "arrow/c/bridge.h"
+
+
+// >> Custom parsing of Arrow IPC
+
 namespace duckdb {
 
-struct ArrowIPCStreamBuffer : public arrow::ipc::Listener {
-protected:
-  /// The schema
-  std::shared_ptr<arrow::Schema> schema_;
-  /// The batches
-  std::vector<std::shared_ptr<arrow::RecordBatch>> batches_;
-  /// Is eos?
-  bool is_eos_;
+  //! An IPC Listener that stores the schema and batches of an IPC stream
+  struct ArrowIPCStreamBuffer : public arrow::ipc::Listener {
+      ArrowIPCStreamBuffer();
 
-  /// Decoded a record batch
-  arrow::Status OnSchemaDecoded(std::shared_ptr<arrow::Schema> schema);
-  /// Decoded a record batch
-  arrow::Status
-  OnRecordBatchDecoded(std::shared_ptr<arrow::RecordBatch> record_batch);
-  /// Reached end of stream
-  arrow::Status OnEOS();
+      bool                            is_eos()  const { return is_eos_;  }
+      std::shared_ptr<arrow::Schema>& schema()        { return schema_;  }
+      arrow::RecordBatchVector&       batches()       { return batches_; }
 
-public:
-  /// Constructor
-  ArrowIPCStreamBuffer();
+    protected:
+      std::shared_ptr<arrow::Schema> schema_;
+      arrow::RecordBatchVector       batches_;
+      bool is_eos_;
 
-  /// Is end of stream?
-  bool is_eos() const { return is_eos_; }
-  /// Return the schema
-  std::shared_ptr<arrow::Schema> &schema() { return schema_; }
-  /// Return the batches
-  std::vector<std::shared_ptr<arrow::RecordBatch>> &batches() {
-    return batches_;
-  }
-};
+      arrow::Status      OnSchemaDecoded(std::shared_ptr<arrow::Schema>      schema      );
+      arrow::Status OnRecordBatchDecoded(std::shared_ptr<arrow::RecordBatch> record_batch);
+      arrow::Status OnEOS();
+  };
 
-struct ArrowIPCStreamBufferReader : public arrow::RecordBatchReader {
-protected:
-  /// The buffer
-  std::shared_ptr<ArrowIPCStreamBuffer> buffer_;
-  /// The batch index
-  size_t next_batch_id_;
 
-public:
-  /// Constructor
-  ArrowIPCStreamBufferReader(std::shared_ptr<ArrowIPCStreamBuffer> buffer);
-  /// Destructor
-  ~ArrowIPCStreamBufferReader() = default;
+  struct ArrowRecordBatchReader : public arrow::RecordBatchReader {
+      ArrowRecordBatchReader(std::shared_ptr<ArrowIPCStreamBuffer> buffer);
 
-  /// Get the schema
-  std::shared_ptr<arrow::Schema> schema() const override;
-  /// Read the next record batch in the stream. Return null for batch when
-  /// reaching end of stream
-  arrow::Status ReadNext(std::shared_ptr<arrow::RecordBatch> *batch) override;
+      ~ArrowRecordBatchReader() = default;
 
-  /// Create arrow array stream wrapper
-  static duckdb::unique_ptr<ArrowArrayStreamWrapper>
-  CreateStream(uintptr_t buffer_ptr, ArrowStreamParameters &parameters);
-  /// Create arrow array stream wrapper
-  static void GetSchema(uintptr_t buffer_ptr, ArrowSchemaWrapper &schema);
-};
+      std::shared_ptr<arrow::Schema> schema() const override;
 
-struct BufferingArrowIPCStreamDecoder : public arrow::ipc::StreamDecoder {
-protected:
-  /// The buffer
-  std::shared_ptr<ArrowIPCStreamBuffer> buffer_;
+      //! Read the next record batch in the stream. Returns nullptr at the end.
+      arrow::Status ReadNext(std::shared_ptr<arrow::RecordBatch> *batch) override;
 
-public:
-  /// Constructor
-  BufferingArrowIPCStreamDecoder(std::shared_ptr<ArrowIPCStreamBuffer> buffer =
-                                     std::make_shared<ArrowIPCStreamBuffer>());
-  /// Get the buffer
-  std::shared_ptr<ArrowIPCStreamBuffer> &buffer() { return buffer_; }
-};
+    protected:
+      std::shared_ptr<ArrowIPCStreamBuffer> buffer_;
+      size_t                                next_batch_id_;
+  };
+
+
+  //! Exports an ArrowRecordBatchReader on the input IPC buffer to the C data interface
+  duckdb::unique_ptr<ArrowArrayStreamWrapper>
+  CStreamForIPCBuffer(uintptr_t buffer_ptr, ArrowStreamParameters &parameters);
+
+  //! Uses an ArrowRecordBatchReader on the input IPC buffer to set schema
+  void SchemaFromIPCBuffer(uintptr_t buffer_ptr, ArrowSchemaWrapper& schema);
 
 } // namespace duckdb
