@@ -1,4 +1,0 @@
-[submodule "duckdb"]
-	path = duckdb
-	url = https://github.com/drin/duckdb
-	branch = coop-decomp
