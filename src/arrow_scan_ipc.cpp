@@ -2,31 +2,6 @@
 
 namespace duckdb {
 
-  TableFunction ArrowIPCTableFunction::GetFunction() {
-    // Fields for each IPC buffer to scan
-    child_list_t<LogicalType> ipc_buffer_fields {
-       {"ptr" , LogicalType::UBIGINT}
-      ,{"size", LogicalType::UBIGINT}
-    };
-
-    // The function argument is list<struct>; each struct describes an IPC buffer.
-    TableFunction scan_arrow_ipc_func(
-       "scan_arrow_ipc"
-      ,{ LogicalType::LIST(LogicalType::STRUCT(ipc_buffer_fields)) }
-      ,ArrowIPCTableFunction::ArrowScanFunction
-      ,ArrowIPCTableFunction::ArrowScanBind
-      ,ArrowTableFunction::ArrowScanInitGlobal
-      ,ArrowTableFunction::ArrowScanInitLocal
-    );
-
-    scan_arrow_ipc_func.cardinality = ArrowTableFunction::ArrowScanCardinality;
-    scan_arrow_ipc_func.get_batch_index     = nullptr; // TODO implement
-    scan_arrow_ipc_func.projection_pushdown = true;
-    scan_arrow_ipc_func.filter_pushdown     = false;
-
-    return scan_arrow_ipc_func;
-  }
-
   arrow::Status
   ConsumeArrowStream( std::shared_ptr<ArrowIPCStreamBuffer> ipc_buffer
                      ,std::vector<duckdb::Value> input_buffers) {
@@ -41,6 +16,7 @@ namespace duckdb {
       auto decode_status = stream_decoder->Consume(
         (const uint8_t*) buffer_ptr, buffer_size
       );
+
       if (!decode_status.ok()) { return decode_status; }
     }
 
@@ -70,7 +46,7 @@ namespace duckdb {
 
     // First, decode the schema from the IPC stream into `fn_data`
     // Then, bind the logical schema types (`names` and `return_types`)
-    SchemaFromIPCBuffer((uintptr_t) &ipc_buffer, fn_data->schema_root);
+    SchemaFromIPCBuffer(ipc_buffer, fn_data->schema_root);
     PopulateArrowTableType(fn_data->arrow_table, fn_data->schema_root, names, return_types);
 
     QueryResult::DeduplicateColumns(names);
@@ -89,10 +65,10 @@ namespace duckdb {
     auto &state        = data_p.local_state->Cast<ArrowScanLocalState>();
     auto &global_state = data_p.global_state->Cast<ArrowScanGlobalState>();
 
-    if (state.chunk_offset >= (idx_t)state.chunk->arrow_array.length) {
-        if (!ArrowScanParallelStateNext(context, data_p.bind_data.get(), state, global_state)) {
-            return;
-        }
+    if (state.chunk_offset >= (idx_t) state.chunk->arrow_array.length) {
+      if (!ArrowScanParallelStateNext(context, data_p.bind_data.get(), state, global_state)) {
+        return;
+      }
     }
 
     // Move (zero-copy) Arrow data to DuckDB chunk
@@ -132,6 +108,32 @@ namespace duckdb {
 
     output.Verify();
     state.chunk_offset += output.size();
+  }
+
+  TableFunction ArrowIPCTableFunction::GetFunction() {
+    // Fields for each IPC buffer to scan
+    child_list_t<LogicalType> ipc_buffer_fields {
+       {"ptr" , LogicalType::UBIGINT}
+      ,{"size", LogicalType::UBIGINT}
+    };
+
+    // The function argument is list<struct>; each struct describes an IPC buffer.
+    TableFunction scan_arrow_ipc_func(
+       "scan_arrow_ipc"
+      ,{ LogicalType::LIST(LogicalType::STRUCT(ipc_buffer_fields)) }
+      ,ArrowIPCTableFunction::ArrowScanFunction
+      ,ArrowIPCTableFunction::ArrowScanBind
+      ,ArrowTableFunction::ArrowScanInitGlobal
+      ,ArrowTableFunction::ArrowScanInitLocal
+    );
+
+    scan_arrow_ipc_func.cardinality = ArrowTableFunction::ArrowScanCardinality;
+    // TODO: implement
+    scan_arrow_ipc_func.get_batch_index     = ArrowTableFunction::ArrowGetBatchIndex;
+    scan_arrow_ipc_func.projection_pushdown = true;
+    scan_arrow_ipc_func.filter_pushdown     = false;
+
+    return scan_arrow_ipc_func;
   }
 
 } // namespace duckdb
