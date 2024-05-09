@@ -17,8 +17,9 @@ namespace duckdb {
     // A delegate constructor that takes an IPC buffer
     ArrowIPCScanFunctionData( stream_factory_produce_t              reader_factory
                              ,std::shared_ptr<ArrowIPCStreamBuffer> arrow_buffer)
-      : ArrowScanFunctionData(reader_factory, (uintptr_t) &arrow_buffer) {
-      ipc_buffer = arrow_buffer;
+      : ArrowScanFunctionData(reader_factory, 0ULL) {
+      ipc_buffer         = std::move(arrow_buffer);
+      stream_factory_ptr = (uintptr_t) &ipc_buffer;
     }
 
     // An attribute to keep the decoded arrow data alive
