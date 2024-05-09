@@ -65,6 +65,7 @@ namespace duckdb {
   CStreamForIPCBuffer(uintptr_t buffer_ptr, ArrowStreamParameters &parameters);
 
   //! Uses an ArrowRecordBatchReader on the input IPC buffer to set schema
-  void SchemaFromIPCBuffer(uintptr_t buffer_ptr, ArrowSchemaWrapper& schema);
+  void SchemaFromIPCBuffer( shared_ptr<ArrowIPCStreamBuffer> buffer
+                           ,ArrowSchemaWrapper&              schema);
 
 } // namespace duckdb
