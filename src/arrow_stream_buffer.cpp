@@ -65,28 +65,25 @@ namespace duckdb {
     auto stream_wrapper = duckdb::make_uniq<duckdb::ArrowArrayStreamWrapper>();
     stream_wrapper->arrow_array_stream.release = nullptr;
 
+    // Export the RecordBatchReader to use the C data stream interface
     auto export_status = arrow::ExportRecordBatchReader(
       reader, &stream_wrapper->arrow_array_stream
     );
 
     if (!export_status.ok()) {
-      if (stream_wrapper->arrow_array_stream.release) {
-        stream_wrapper->arrow_array_stream.release(&stream_wrapper->arrow_array_stream);
-      }
-
+      std::cerr << "Error when exporting ArrowRecordBatchReader:" << std::endl
+                << export_status.message()                        << std::endl
+      ;
       return nullptr;
     }
 
-    // Release the stream
     return stream_wrapper;
   }
 
   //! Sets Arrow schema (C data interface) from input IPC buffer
-  void SchemaFromIPCBuffer(uintptr_t buffer_ptr, duckdb::ArrowSchemaWrapper &schema) {
-    assert(buffer_ptr != 0);
-
-    auto buffer = reinterpret_cast<std::shared_ptr<ArrowIPCStreamBuffer>*>(buffer_ptr);
-    auto reader = std::make_shared<ArrowRecordBatchReader>(*buffer);
+  void SchemaFromIPCBuffer( shared_ptr<ArrowIPCStreamBuffer> buffer
+                           ,duckdb::ArrowSchemaWrapper&      schema) {
+    auto reader = std::make_shared<ArrowRecordBatchReader>(buffer);
 
     // Export RecordBatchReader to C data interface so we get an `ArrowSchema`
     auto stream_wrapper = duckdb::make_uniq<duckdb::ArrowArrayStreamWrapper>();
@@ -96,13 +93,7 @@ namespace duckdb {
       reader, &stream_wrapper->arrow_array_stream
     );
 
-    if (!export_status.ok()) {
-      if (stream_wrapper->arrow_array_stream.release) {
-        stream_wrapper->arrow_array_stream.release(&stream_wrapper->arrow_array_stream);
-      }
-
-      return;
-    }
+    if (!export_status.ok()) { return; }
 
     // Set the `arrow_schema` attribute of ArrowSchemaWrapper (also passes ownership)
     stream_wrapper->arrow_array_stream.get_schema(
