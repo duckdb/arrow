@@ -18,27 +18,24 @@
 namespace duckdb {
 
 static void LoadInternal(DatabaseInstance &instance) {
-        ExtensionUtil::RegisterFunction(instance, ToArrowIPCFunction::GetFunction());
-        ExtensionUtil::RegisterFunction(instance, ArrowIPCTableFunction::GetFunction());
+  ExtensionUtil::RegisterFunction(instance, ToArrowIPCFunction::GetFunction());
+  ExtensionUtil::RegisterFunction(instance,
+                                  ArrowIPCTableFunction::GetFunction());
 }
 
-void ArrowExtension::Load(DuckDB &db) {
-	LoadInternal(*db.instance);
-}
-std::string ArrowExtension::Name() {
-	return "arrow";
-}
+void ArrowExtension::Load(DuckDB &db) { LoadInternal(*db.instance); }
+std::string ArrowExtension::Name() { return "arrow"; }
 
 } // namespace duckdb
 
 extern "C" {
 
 DUCKDB_EXTENSION_API void arrow_init(duckdb::DatabaseInstance &db) {
-	LoadInternal(db);
+  LoadInternal(db);
 }
 
 DUCKDB_EXTENSION_API const char *arrow_version() {
-	return duckdb::DuckDB::LibraryVersion();
+  return duckdb::DuckDB::LibraryVersion();
 }
 }
 
