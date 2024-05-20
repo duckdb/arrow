@@ -21,9 +21,21 @@
 // Load extension automatically (I think)
 namespace duckdb {
 
-  static void LoadInternal(DatabaseInstance &instance) {
-    ExtensionUtil::RegisterFunction(instance,    ToArrowIPCFunction::GetFunction());
-    ExtensionUtil::RegisterFunction(instance, ArrowIPCTableFunction::GetFunction());
+  static void LoadInternal(DatabaseInstance& instance) {
+    // Table Functions for converting to Arrow IPC
+    ExtensionUtil::RegisterFunction(instance, ToArrowIPCFunction::GetFunction());
+
+    // Table Functions for converting from Arrow IPC
+
+    // scans IPC buffers directly
+    ExtensionUtil::RegisterFunction(
+      instance, ArrowIPCTableFunction::GetFunctionScanIPC()
+    );
+
+    // scans arrow stream format from files
+    ExtensionUtil::RegisterFunction(
+      instance, ArrowIPCTableFunction::GetFunctionScanArrows()
+    );
   }
 
   void        ArrowExtension::Load(DuckDB &db) { LoadInternal(*db.instance); }

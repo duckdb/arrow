@@ -1,11 +1,10 @@
 #pragma once
 
 #include "duckdb/function/table/arrow.hpp"
-#include "arrow_stream_buffer.hpp"
+#include "arrow_readers.hpp"
 
 #include "duckdb.hpp"
 
-using ArrowIPCDec = arrow::ipc::StreamDecoder;
 
 namespace duckdb {
 
@@ -23,7 +22,8 @@ namespace duckdb {
     }
 
     // An attribute to keep the decoded arrow data alive
-    std::shared_ptr<ArrowIPCStreamBuffer> ipc_buffer { nullptr };
+    std::shared_ptr<ArrowIPCStreamBuffer>       ipc_buffer { nullptr };
+    std::vector<std::shared_ptr<arrow::Buffer>> file_buffers;
   };
 
   /**
@@ -33,18 +33,41 @@ namespace duckdb {
    */
   struct ArrowIPCTableFunction : public ArrowTableFunction {
     public:
-      //! Returns a constructed instance of ArrowIPCTableFunction
-      static TableFunction GetFunction();
+      //! Return a TableFunction that scans IPC buffers directly
+      static TableFunction GetFunctionScanIPC();
+
+      //! Return a TableFunction that scans IPC buffers from a file
+      static TableFunction GetFunctionScanArrows();
 
     private:
-      static unique_ptr<FunctionData>
-      ArrowScanBind( ClientContext&          context
-                    ,TableFunctionBindInput& input
-                    ,vector<LogicalType>&    return_types
-                    ,vector<string>&         names);
 
+      // >> Supporting functions for `scan_arrow_ipc`
+
+      //! Binding for arrow IPC buffers
+      static unique_ptr<FunctionData>
+      BindFnScanArrowIPC( ClientContext&          context
+                         ,TableFunctionBindInput& input
+                         ,vector<LogicalType>&    return_types
+                         ,vector<string>&         names);
+
+      //! Scan implementation for arrow IPC buffers
       static void
-      ArrowScanFunction( ClientContext&      context
+      TableFnScanArrowIPC( ClientContext&      context
+                          ,TableFunctionInput& data_p
+                          ,DataChunk&          output);
+
+      // >> Supporting functions for `scan_arrows_file`
+
+      //! Binding for arrow IPC buffers
+      static unique_ptr<FunctionData>
+      BindFnScanArrows( ClientContext&          context
+                       ,TableFunctionBindInput& input
+                       ,vector<LogicalType>&    return_types
+                       ,vector<string>&         names);
+
+      //! Scan implementation for arrow IPC buffers
+      static void
+      TableFnScanArrows( ClientContext&      context
                         ,TableFunctionInput& data_p
                         ,DataChunk&          output);
   };

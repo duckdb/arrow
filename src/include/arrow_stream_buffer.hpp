@@ -15,10 +15,18 @@
 #include "arrow/type.h"
 #include "arrow/status.h"
 #include "arrow/result.h"
+#include "arrow/buffer.h"
 #include "arrow/record_batch.h"
 
+#include "arrow/io/file.h"
 #include "arrow/ipc/reader.h"
 #include "arrow/c/bridge.h"
+
+
+// ------------------------------
+// Convenience Aliases
+
+using ArrowIPCDec = arrow::ipc::StreamDecoder;
 
 
 // >> Custom parsing of Arrow IPC
