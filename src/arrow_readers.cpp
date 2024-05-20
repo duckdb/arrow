@@ -121,22 +121,21 @@ namespace duckdb {
   */
 
   // >> Implementations that prefer internal duckdb types
+
+  //! Decode data from `duckdb_bufferlist` into `ipc_buffer` using arrow::ipc::Decoder.
   arrow::Status
   ConsumeArrowStream( std::shared_ptr<ArrowIPCStreamBuffer> ipc_buffer
-                     ,vector<duckdb::Value> input_buffers) {
+                     ,vector<duckdb::Value> duckdb_bufferlist) {
     // Decoder consumes each IPC buffer and the `ipc_buffer` listens for its events
     auto stream_decoder = make_uniq<ArrowIPCDec>(std::move(ipc_buffer));
 
-    for (auto& input_buffer : input_buffers) {
+    for (auto& duckdb_buffer : duckdb_bufferlist) {
       // Each "buffer" is a pointer to data and a buffer size
-      auto     unpacked    = StructValue::GetChildren(input_buffer);
-      uint64_t buffer_ptr  = unpacked[0].GetValue<uint64_t>();
-      uint64_t buffer_size = unpacked[1].GetValue<uint64_t>();
+      auto     buffer_struct = StructValue::GetChildren(duckdb_buffer);
+      uint64_t buffer_ptr    = buffer_struct[0].GetValue<uint64_t>();
+      uint64_t buffer_size   = buffer_struct[1].GetValue<uint64_t>();
 
-      auto decode_status = stream_decoder->Consume(
-        (const uint8_t*) buffer_ptr, buffer_size
-      );
-
+      auto decode_status = stream_decoder->Consume((const uint8_t*) buffer_ptr, buffer_size);
       if (!decode_status.ok()) { return decode_status; }
     }
 
@@ -144,6 +143,9 @@ namespace duckdb {
   }
 
 
+  //! Given an `arrow::Buffer`, return a pointer to the buffer and its size wrapped in a
+  //  duckdb value. The value structure is:
+  //    vector<std::pair<std::string, duckdb::Value>>
   Value ValueForIPCBuffer(arrow::Buffer& ipc_buffer) {
     // Place values into a child_list_t<type>
     child_list_t<Value> struct_vals {
