@@ -23,6 +23,7 @@ namespace duckdb {
 
     // An attribute to keep the decoded arrow data alive
     std::shared_ptr<ArrowIPCStreamBuffer>       ipc_buffer { nullptr };
+    std::unordered_map<std::string, bool>       file_opened;
     std::vector<std::shared_ptr<arrow::Buffer>> file_buffers;
   };
 

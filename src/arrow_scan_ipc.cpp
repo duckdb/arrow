@@ -10,19 +10,18 @@ namespace duckdb {
     // Extract function arguments
     auto input_buffers = ListValue::GetChildren(input.inputs[0]);
 
-    // TODO: why do all of this at binding time?
+    // Maintain the Arrow data (IPC buffer) and a function to create a RecordBatchReader
+    auto ipc_buffer     = std::make_shared<ArrowIPCStreamBuffer>();
+    auto reader_factory = (stream_factory_produce_t) &CStreamForIPCBuffer;
+    auto fn_data        = make_uniq<ArrowIPCScanFunctionData>(reader_factory, ipc_buffer);
+
+    // TODO: Can we reduce this to only read the schema at binding time?
     // Start by reading all data from input IPC buffers
-    // NOTE: we use std::shared_ptr because this gets passed to Arrow code
-    auto ipc_buffer    = std::make_shared<ArrowIPCStreamBuffer>();
     auto decode_status = ConsumeArrowStream(ipc_buffer, input_buffers);
 
     // Errors if status is not OK or if the decoder never saw an end-of-stream marker
     if (!decode_status.ok())   { throw IOException("Invalid IPC stream");    }
     if (!ipc_buffer->is_eos()) { throw IOException("Incomplete IPC stream"); }
-
-    // Maintain the Arrow data (IPC buffer) and a function to create a RecordBatchReader
-    auto reader_factory = (stream_factory_produce_t) &CStreamForIPCBuffer;
-    auto fn_data        = make_uniq<ArrowIPCScanFunctionData>(reader_factory, ipc_buffer);
 
     // First, decode the schema from the IPC stream into `fn_data`
     // Then, bind the logical schema types (`names` and `return_types`)
@@ -47,37 +46,40 @@ namespace duckdb {
     // Extract function arguments
     auto input_files = ListValue::GetChildren(input.inputs[0]);
 
+    // Maintain the Arrow data (IPC buffer) and a function to create a RecordBatchReader
+    auto ipc_buffer     = std::make_shared<ArrowIPCStreamBuffer>();
+    auto reader_factory = (stream_factory_produce_t) &CStreamForIPCBuffer;
+    auto fn_data        = make_uniq<ArrowIPCScanFunctionData>(reader_factory, ipc_buffer);
+
+    // Read IPC buffers from files
     vector<Value> duckdb_buffers;
-    std::vector<std::shared_ptr<arrow::Buffer>> arrow_buffers;
     for (auto& file_uri : input_files) {
       string uri_str = file_uri.GetValue<string>();
 
+      // NOTE: not thread safe (I don't think)
+      // If we have seen this file before, assume it has been read already
+      const auto& map_entry = fn_data->file_opened.find(uri_str);
+      if (map_entry != fn_data->file_opened.end()) { continue; }
+
+      // Read the buffer from the file
       auto result_buffer = BufferFromIPCStream(uri_str);
       if (not result_buffer.ok()) {
         throw IOException("Unable to parse file '" + uri_str + "'");
       }
-      else {
-        std::cerr << "Parsed file '" << uri_str << "'" << std::endl;
-      }
-
       std::shared_ptr<arrow::Buffer> file_buffer = result_buffer.ValueOrDie();
+
       duckdb_buffers.push_back(ValueForIPCBuffer(*file_buffer));
-      arrow_buffers.push_back(std::move(file_buffer));
+      fn_data->file_buffers.push_back(std::move(file_buffer));
+      fn_data->file_opened[uri_str] = true;
     }
 
-    auto input_buffer =  ListValue::GetChildren(Value::LIST(duckdb_buffers));
-
     // Start by reading all data from input IPC buffers
-    auto ipc_buffer    = std::make_shared<ArrowIPCStreamBuffer>();
-    auto decode_status = ConsumeArrowStream(ipc_buffer, input_buffer);
+    auto src_data_buffer = ListValue::GetChildren(Value::LIST(duckdb_buffers));
+    auto decode_status   = ConsumeArrowStream(ipc_buffer, src_data_buffer);
 
     // Errors if status is not OK or if the decoder never saw an end-of-stream marker
     if (!decode_status.ok())   { throw IOException("Invalid IPC stream");    }
     if (!ipc_buffer->is_eos()) { throw IOException("Incomplete IPC stream"); }
-
-    // Maintain the Arrow data (IPC buffer) and a function to create a RecordBatchReader
-    auto reader_factory = (stream_factory_produce_t) &CStreamForIPCBuffer;
-    auto fn_data        = make_uniq<ArrowIPCScanFunctionData>(reader_factory, ipc_buffer);
 
     // First, decode the schema from the IPC stream into `fn_data`
     // Then, bind the logical schema types (`names` and `return_types`)
@@ -93,8 +95,8 @@ namespace duckdb {
     return std::move(fn_data);
   }
 
-  // Same as regular arrow scan, except ArrowToDuckDB call
   // TODO: refactor to allow nicely overriding this
+  //! Scan implementation for Arrow data. Similar logic as python API, except ArrowToDuckDB call
   void ArrowIPCTableFunction::TableFnScanArrowIPC( ClientContext&      context
                                                   ,TableFunctionInput& data_p
                                                   ,DataChunk&          output) {
