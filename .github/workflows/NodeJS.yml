@@ -6,7 +6,7 @@ defaults:
 
 jobs:
   nodejs:
-    if: never()
+    if: false
     name: NodeJS
     runs-on: macos-latest
     env:
