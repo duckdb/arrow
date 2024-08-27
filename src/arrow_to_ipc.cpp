@@ -32,8 +32,8 @@ namespace duckdb {
   struct ToArrowIpcFunctionData: public TableFunctionData {
     ToArrowIpcFunctionData() {}
 
-    shared_ptr<arrow::Schema> schema;
-    idx_t                     chunk_size;
+    std::shared_ptr<arrow::Schema> schema;
+    idx_t                          chunk_size;
   };
 
   struct ToArrowIpcGlobalState: public GlobalTableFunctionState {
@@ -90,7 +90,7 @@ namespace duckdb {
 
     result->schema = arrow::ImportSchema(&schema).ValueOrDie();
 
-    return std::move(result);
+    return result;
   }
 
   OperatorResultType ToArrowIPCFunction::Function( ExecutionContext&   context

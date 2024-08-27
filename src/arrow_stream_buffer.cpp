@@ -81,7 +81,7 @@ namespace duckdb {
   }
 
   //! Sets Arrow schema (C data interface) from input IPC buffer
-  void SchemaFromIPCBuffer( shared_ptr<ArrowIPCStreamBuffer> buffer
+  void SchemaFromIPCBuffer( std::shared_ptr<ArrowIPCStreamBuffer> buffer
                            ,duckdb::ArrowSchemaWrapper&      schema) {
     auto reader = std::make_shared<ArrowRecordBatchReader>(buffer);
 
