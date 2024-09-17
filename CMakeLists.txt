@@ -20,7 +20,7 @@ else()
   set(OSX_ARCH_FLAG "")
 endif()
 
-# Building Arrow (e03105e is for tag apache-arrow-15.0.2)
+# Building Arrow (6a2e19a is for tag apache-arrow-17.0.0)
 set(CMAKE_CXX_STANDARD 17)
 include(ExternalProject)
 ExternalProject_Add(
