@@ -175,7 +175,7 @@ namespace duckdb {
 
     scan_arrow_ipc_func.cardinality = ArrowTableFunction::ArrowScanCardinality;
     // TODO: implement
-    scan_arrow_ipc_func.get_batch_index     = ArrowTableFunction::ArrowGetBatchIndex;
+    scan_arrow_ipc_func.get_partition_data  = ArrowTableFunction::ArrowGetPartitionData;
     scan_arrow_ipc_func.projection_pushdown = true;
     scan_arrow_ipc_func.filter_pushdown     = false;
 
@@ -196,7 +196,7 @@ namespace duckdb {
 
     tfn_scan_arrows.cardinality = ArrowTableFunction::ArrowScanCardinality;
     // TODO: implement
-    tfn_scan_arrows.get_batch_index     = ArrowTableFunction::ArrowGetBatchIndex;
+    tfn_scan_arrows.get_partition_data  = ArrowTableFunction::ArrowGetPartitionData;
     tfn_scan_arrows.projection_pushdown = true;
     tfn_scan_arrows.filter_pushdown     = false;
 
