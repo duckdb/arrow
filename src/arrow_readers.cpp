@@ -34,11 +34,6 @@ namespace duckdb {
     /** Given a file path, return an arrow::ReadableFile. */
     arrow::Result<std::shared_ptr<arrow::io::ReadableFile>>
     HandleForIPCFile(const std::string &path_as_uri) {
-      std::cout << "Creating handle for arrow IPC-formatted file: "
-                << path_as_uri
-                << std::endl
-      ;
-
       // use the `FileSystem` instance to open a handle to the file
       return arrow::io::ReadableFile::Open(path_as_uri);
     }
@@ -46,8 +41,6 @@ namespace duckdb {
     /** Given a file path, create a RecordBatchStreamReader. */
     arrow::Result<std::shared_ptr<arrow::ipc::RecordBatchStreamReader>>
     ReaderForIPCStream(const std::string &path_as_uri) {
-      std::cout << "Creating reader for IPC stream" << std::endl;
-
       // use the `FileSystem` instance to open a handle to the file
       ARROW_ASSIGN_OR_RAISE(auto input_file_handle, HandleForIPCFile(path_as_uri));
 
@@ -58,8 +51,6 @@ namespace duckdb {
     /** Given a file path, create a RecordBatchFileReader. */
     arrow::Result<std::shared_ptr<arrow::ipc::RecordBatchFileReader>>
     ReaderForIPCFile(const std::string &path_as_uri) {
-      std::cout << "Creating reader for IPC file" << std::endl;
-
       // use the `FileSystem` instance to open a handle to the file
       ARROW_ASSIGN_OR_RAISE(auto input_file_handle, HandleForIPCFile(path_as_uri));
 
