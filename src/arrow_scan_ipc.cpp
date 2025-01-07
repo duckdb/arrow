@@ -2,132 +2,205 @@
 
 namespace duckdb {
 
-TableFunction ArrowIPCTableFunction::GetFunction() {
-  child_list_t<LogicalType> make_buffer_struct_children{
-      {"ptr", LogicalType::UBIGINT}, {"size", LogicalType::UBIGINT}};
+  unique_ptr<FunctionData>
+  ArrowIPCTableFunction::BindFnScanArrowIPC( ClientContext&          context
+                                            ,TableFunctionBindInput& input
+                                            ,vector <LogicalType>&   return_types
+                                            ,vector <string>&        names) {
+    // Extract function arguments
+    auto input_buffers = ListValue::GetChildren(input.inputs[0]);
 
-  TableFunction scan_arrow_ipc_func(
-      "scan_arrow_ipc",
-      {LogicalType::LIST(LogicalType::STRUCT(make_buffer_struct_children))},
-      ArrowIPCTableFunction::ArrowScanFunction,
-      ArrowIPCTableFunction::ArrowScanBind,
-      ArrowTableFunction::ArrowScanInitGlobal,
-      ArrowTableFunction::ArrowScanInitLocal);
+    // Maintain the Arrow data (IPC buffer) and a function to create a RecordBatchReader
+    auto ipc_buffer     = std::make_shared<ArrowIPCStreamBuffer>();
+    auto reader_factory = (stream_factory_produce_t) &CStreamForIPCBuffer;
+    auto fn_data        = make_uniq<ArrowIPCScanFunctionData>(reader_factory, ipc_buffer);
 
-  scan_arrow_ipc_func.cardinality = ArrowTableFunction::ArrowScanCardinality;
-  scan_arrow_ipc_func.get_batch_index = nullptr; // TODO implement
-  scan_arrow_ipc_func.projection_pushdown = true;
-  scan_arrow_ipc_func.filter_pushdown = false;
+    // TODO: Can we reduce this to only read the schema at binding time?
+    // Start by reading all data from input IPC buffers
+    auto decode_status = ConsumeArrowStream(ipc_buffer, input_buffers);
 
-  return scan_arrow_ipc_func;
-}
+    // Errors if status is not OK or if the decoder never saw an end-of-stream marker
+    if (!decode_status.ok())   { throw IOException("Invalid IPC stream");    }
+    if (!ipc_buffer->is_eos()) { throw IOException("Incomplete IPC stream"); }
 
-unique_ptr<FunctionData> ArrowIPCTableFunction::ArrowScanBind(
-    ClientContext &context, TableFunctionBindInput &input,
-    vector<LogicalType> &return_types, vector<string> &names) {
-  auto stream_decoder = make_uniq<BufferingArrowIPCStreamDecoder>();
+    // First, decode the schema from the IPC stream into `fn_data`
+    // Then, bind the logical schema types (`names` and `return_types`)
+    SchemaFromIPCBuffer(ipc_buffer, fn_data->schema_root);
+    PopulateArrowTableType(
+       fn_data->arrow_table
+      ,fn_data->schema_root
+      ,names
+      ,return_types
+    );
 
-  // Decode buffer ptr list
-  auto buffer_ptr_list = ListValue::GetChildren(input.inputs[0]);
-  for (auto &buffer_ptr_struct : buffer_ptr_list) {
-    auto unpacked = StructValue::GetChildren(buffer_ptr_struct);
-    uint64_t ptr = unpacked[0].GetValue<uint64_t>();
-    uint64_t size = unpacked[1].GetValue<uint64_t>();
+    QueryResult::DeduplicateColumns(names);
+    return std::move(fn_data);
+  }
 
-    // Feed stream into decoder
-    auto res = stream_decoder->Consume((const uint8_t *)ptr, size);
+  unique_ptr<FunctionData>
+  ArrowIPCTableFunction::BindFnScanArrows( ClientContext&          context
+                                          ,TableFunctionBindInput& input
+                                          ,vector <LogicalType>&   return_types
+                                          ,vector <string>&        names) {
+    // TODO: Only get the schema at binding time; decode the buffers later
+    // Extract function arguments
+    auto input_files = ListValue::GetChildren(input.inputs[0]);
 
-    if (!res.ok()) {
-      throw IOException("Invalid IPC stream");
+    // Maintain the Arrow data (IPC buffer) and a function to create a RecordBatchReader
+    auto ipc_buffer     = std::make_shared<ArrowIPCStreamBuffer>();
+    auto reader_factory = (stream_factory_produce_t) &CStreamForIPCBuffer;
+    auto fn_data        = make_uniq<ArrowIPCScanFunctionData>(reader_factory, ipc_buffer);
+
+    // Read IPC buffers from files
+    vector<Value> duckdb_buffers;
+    for (auto& file_uri : input_files) {
+      string uri_str = file_uri.GetValue<string>();
+
+      // NOTE: not thread safe (I don't think)
+      // If we have seen this file before, assume it has been read already
+      const auto& map_entry = fn_data->file_opened.find(uri_str);
+      if (map_entry != fn_data->file_opened.end()) { continue; }
+
+      // Read the buffer from the file
+      auto result_buffer = BufferFromIPCStream(uri_str);
+      if (not result_buffer.ok()) {
+        throw IOException("Unable to parse file '" + uri_str + "'");
+      }
+      std::shared_ptr<arrow::Buffer> file_buffer = result_buffer.ValueOrDie();
+
+      duckdb_buffers.push_back(ValueForIPCBuffer(*file_buffer));
+      fn_data->file_buffers.push_back(std::move(file_buffer));
+      fn_data->file_opened[uri_str] = true;
     }
+
+    // Start by reading all data from input IPC buffers
+    auto src_data_buffer = ListValue::GetChildren(Value::LIST(duckdb_buffers));
+    auto decode_status   = ConsumeArrowStream(ipc_buffer, src_data_buffer);
+
+    // Errors if status is not OK or if the decoder never saw an end-of-stream marker
+    if (!decode_status.ok())   { throw IOException("Invalid IPC stream");    }
+    if (!ipc_buffer->is_eos()) { throw IOException("Incomplete IPC stream"); }
+
+    // First, decode the schema from the IPC stream into `fn_data`
+    // Then, bind the logical schema types (`names` and `return_types`)
+    SchemaFromIPCBuffer(ipc_buffer, fn_data->schema_root);
+    PopulateArrowTableType(
+       fn_data->arrow_table
+      ,fn_data->schema_root
+      ,names
+      ,return_types
+    );
+
+    QueryResult::DeduplicateColumns(names);
+    return std::move(fn_data);
   }
 
-  if (!stream_decoder->buffer()->is_eos()) {
-    throw IOException(
-        "IPC buffers passed to arrow scan should contain entire stream");
-  }
+  // TODO: refactor to allow nicely overriding this
+  //! Scan implementation for Arrow data. Similar logic as python API, except ArrowToDuckDB call
+  void ArrowIPCTableFunction::TableFnScanArrowIPC( ClientContext&      context
+                                                  ,TableFunctionInput& data_p
+                                                  ,DataChunk&          output) {
+    if (!data_p.local_state) { return; }
 
-  // These are the params I need to produce from the ipc buffers using the
-  // WebDB.cc code
-  auto stream_factory_ptr = (uintptr_t)&stream_decoder->buffer();
-  auto stream_factory_produce =
-      (stream_factory_produce_t)&ArrowIPCStreamBufferReader::CreateStream;
-  auto stream_factory_get_schema =
-      (stream_factory_get_schema_t)&ArrowIPCStreamBufferReader::GetSchema;
-  auto res = make_uniq<ArrowIPCScanFunctionData>(stream_factory_produce,
-                                                 stream_factory_ptr);
+    auto &data         = data_p.bind_data->CastNoConst<ArrowScanFunctionData>();
+    auto &state        = data_p.local_state->Cast<ArrowScanLocalState>();
+    auto &global_state = data_p.global_state->Cast<ArrowScanGlobalState>();
 
-  // Store decoder
-  res->stream_decoder = std::move(stream_decoder);
+    // Check if we are out of tuples in this chunk
+    if (state.chunk_offset >= (idx_t) state.chunk->arrow_array.length) {
 
-  // TODO Everything below this is identical to the bind in
-  // duckdb/src/function/table/arrow.cpp
-  auto &data = *res;
-  stream_factory_get_schema((ArrowArrayStream *)stream_factory_ptr,
-                            data.schema_root.arrow_schema);
-  for (idx_t col_idx = 0;
-       col_idx < (idx_t)data.schema_root.arrow_schema.n_children; col_idx++) {
-    auto &schema = *data.schema_root.arrow_schema.children[col_idx];
-    if (!schema.release) {
-      throw InvalidInputException("arrow_scan: released schema passed");
+      // Check if there is a next chunk
+      bool has_next_chunk = ArrowScanParallelStateNext(
+        context, data_p.bind_data.get(), state, global_state
+      );
+
+      if (!has_next_chunk) { return; }
     }
-    auto arrow_type = GetArrowLogicalType(schema);
-    if (schema.dictionary) {
-      auto dictionary_type = GetArrowLogicalType(*schema.dictionary);
-      return_types.emplace_back(dictionary_type->GetDuckType());
-      arrow_type->SetDictionary(std::move(dictionary_type));
-    } else {
-      return_types.emplace_back(arrow_type->GetDuckType());
-    }
-    res->arrow_table.AddColumn(col_idx, std::move(arrow_type));
-    auto format = string(schema.format);
-    auto name = string(schema.name);
-    if (name.empty()) {
-      name = string("v") + to_string(col_idx);
-    }
-    names.push_back(name);
-  }
-  QueryResult::DeduplicateColumns(names);
-  return std::move(res);
-}
 
-// Same as regular arrow scan, except ArrowToDuckDB call TODO: refactor to allow
-// nicely overriding this
-void ArrowIPCTableFunction::ArrowScanFunction(ClientContext &context,
-                                              TableFunctionInput &data_p,
-                                              DataChunk &output) {
-  if (!data_p.local_state) {
-    return;
-  }
-  auto &data = data_p.bind_data->CastNoConst<ArrowScanFunctionData>();
-  auto &state = data_p.local_state->Cast<ArrowScanLocalState>();
-  auto &global_state = data_p.global_state->Cast<ArrowScanGlobalState>();
+    // Move (zero-copy) Arrow data to DuckDB chunk
+    int64_t output_size = MinValue<int64_t>(
+       STANDARD_VECTOR_SIZE
+      ,state.chunk->arrow_array.length - state.chunk_offset
+    );
+    data.lines_read += output_size;
 
-  //! Out of tuples in this chunk
-  if (state.chunk_offset >= (idx_t)state.chunk->arrow_array.length) {
-    if (!ArrowScanParallelStateNext(context, data_p.bind_data.get(), state,
-                                    global_state)) {
-      return;
+    // For now, maintain that we did not pushdown projection into Arrow.
+    // I think this means that it was not pushed down into the scan? Here, since we're
+    // only getting IPC buffers, then there was no scan for us to push down into.
+    constexpr bool was_proj_pusheddown { false };
+
+    if (global_state.CanRemoveFilterColumns()) {
+        state.all_columns.Reset();
+        state.all_columns.SetCardinality(output_size);
+
+        ArrowToDuckDB( state
+                      ,data.arrow_table.GetColumns()
+                      ,state.all_columns
+                      ,data.lines_read - output_size
+                      ,was_proj_pusheddown);
+
+        output.ReferenceColumns(state.all_columns, global_state.projection_ids);
     }
-  }
-  int64_t output_size =
-      MinValue<int64_t>(STANDARD_VECTOR_SIZE,
-                        state.chunk->arrow_array.length - state.chunk_offset);
-  data.lines_read += output_size;
-  if (global_state.CanRemoveFilterColumns()) {
-    state.all_columns.Reset();
-    state.all_columns.SetCardinality(output_size);
-    ArrowToDuckDB(state, data.arrow_table.GetColumns(), state.all_columns,
-                  data.lines_read - output_size, false);
-    output.ReferenceColumns(state.all_columns, global_state.projection_ids);
-  } else {
-    output.SetCardinality(output_size);
-    ArrowToDuckDB(state, data.arrow_table.GetColumns(), output,
-                  data.lines_read - output_size, false);
+
+    else {
+        output.SetCardinality(output_size);
+
+        ArrowToDuckDB( state
+                      ,data.arrow_table.GetColumns()
+                      ,output
+                      ,data.lines_read - output_size
+                      ,was_proj_pusheddown);
+    }
+
+    output.Verify();
+    state.chunk_offset += output.size();
   }
 
-  output.Verify();
-  state.chunk_offset += output.size();
-}
+  TableFunction ArrowIPCTableFunction::GetFunctionScanIPC() {
+    // Fields for each IPC buffer to scan
+    child_list_t<LogicalType> ipc_buffer_fields {
+       {"ptr" , LogicalType::UBIGINT}
+      ,{"size", LogicalType::UBIGINT}
+    };
+
+    // The function argument is list<struct>; each struct describes an IPC buffer.
+    TableFunction scan_arrow_ipc_func(
+       "scan_arrow_ipc"
+      ,{ LogicalType::LIST(LogicalType::STRUCT(ipc_buffer_fields)) }
+      ,ArrowIPCTableFunction::TableFnScanArrowIPC
+      ,ArrowIPCTableFunction::BindFnScanArrowIPC
+      ,ArrowTableFunction::ArrowScanInitGlobal
+      ,ArrowTableFunction::ArrowScanInitLocal
+    );
+
+    scan_arrow_ipc_func.cardinality = ArrowTableFunction::ArrowScanCardinality;
+    // TODO: implement
+    scan_arrow_ipc_func.get_partition_data  = ArrowTableFunction::ArrowGetPartitionData;
+    scan_arrow_ipc_func.projection_pushdown = true;
+    scan_arrow_ipc_func.filter_pushdown     = false;
+
+    return scan_arrow_ipc_func;
+  }
+
+  TableFunction ArrowIPCTableFunction::GetFunctionScanArrows() {
+    // The function argument is list<varchar>; each string is a file URI.
+    TableFunction tfn_scan_arrows(
+       "scan_arrows_file"
+      ,{ LogicalType::LIST(LogicalType::VARCHAR) }
+      ,ArrowIPCTableFunction::TableFnScanArrowIPC
+      // ,ArrowIPCTableFunction::TableFnScanArrows
+      ,ArrowIPCTableFunction::BindFnScanArrows
+      ,ArrowTableFunction::ArrowScanInitGlobal
+      ,ArrowTableFunction::ArrowScanInitLocal
+    );
+
+    tfn_scan_arrows.cardinality = ArrowTableFunction::ArrowScanCardinality;
+    // TODO: implement
+    tfn_scan_arrows.get_partition_data  = ArrowTableFunction::ArrowGetPartitionData;
+    tfn_scan_arrows.projection_pushdown = true;
+    tfn_scan_arrows.filter_pushdown     = false;
+
+    return tfn_scan_arrows;
+  }
 
 } // namespace duckdb
