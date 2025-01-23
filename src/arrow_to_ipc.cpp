@@ -76,9 +76,9 @@ ToArrowIPCFunction::Bind(ClientContext &context, TableFunctionBindInput &input,
 
   // Create the Arrow schema
   ArrowSchema schema;
+  auto properties = context.GetClientProperties();
   ArrowConverter::ToArrowSchema(&schema, input.input_table_types,
-                                input.input_table_names,
-                                context.GetClientProperties());
+                                input.input_table_names, properties);
   result->schema = arrow::ImportSchema(&schema).ValueOrDie();
 
   return std::move(result);
@@ -116,9 +116,10 @@ OperatorResultType ToArrowIPCFunction::Function(ExecutionContext &context,
     output.data[1].SetValue(0, Value::BOOLEAN(1));
   } else {
     if (!local_state.appender) {
-      local_state.appender =
-          make_uniq<ArrowAppender>(input.GetTypes(), data.chunk_size,
-                                   context.client.GetClientProperties());
+      local_state.appender = make_uniq<ArrowAppender>(input.GetTypes(), data.chunk_size,
+                                   context.client.GetClientProperties(),
+                                   ArrowTypeExtensionData::GetExtensionTypes(
+                                       context.client, input.GetTypes()));
     }
 
     // Append input chunk

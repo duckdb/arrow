@@ -15,7 +15,6 @@ TableFunction ArrowIPCTableFunction::GetFunction() {
       ArrowTableFunction::ArrowScanInitLocal);
 
   scan_arrow_ipc_func.cardinality = ArrowTableFunction::ArrowScanCardinality;
-  scan_arrow_ipc_func.get_batch_index = nullptr; // TODO implement
   scan_arrow_ipc_func.projection_pushdown = true;
   scan_arrow_ipc_func.filter_pushdown = false;
 
@@ -71,9 +70,12 @@ unique_ptr<FunctionData> ArrowIPCTableFunction::ArrowScanBind(
     if (!schema.release) {
       throw InvalidInputException("arrow_scan: released schema passed");
     }
-    auto arrow_type = GetArrowLogicalType(schema);
+    auto arrow_type =
+       ArrowType::GetArrowLogicalType(DBConfig::GetConfig(context), schema);
+
     if (schema.dictionary) {
-      auto dictionary_type = GetArrowLogicalType(*schema.dictionary);
+      auto dictionary_type = ArrowType::GetArrowLogicalType(
+          DBConfig::GetConfig(context), *schema.dictionary);
       return_types.emplace_back(dictionary_type->GetDuckType());
       arrow_type->SetDictionary(std::move(dictionary_type));
     } else {
