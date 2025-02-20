@@ -20,13 +20,13 @@ else()
   set(OSX_ARCH_FLAG "")
 endif()
 
-# Building Arrow (6a0414b is for tag apache-arrow-18.1.0)
+# Building Arrow (272715f is for tag apache-arrow-19.0.1)
 set(CMAKE_CXX_STANDARD 17)
 include(ExternalProject)
 ExternalProject_Add(
         ARROW_EP
         GIT_REPOSITORY "https://github.com/apache/arrow"
-        GIT_TAG 6a0414bd9a91e890ec6a45369bf61f405180628c
+        GIT_TAG 272715f6df2a042d69881ffa03d5078c58e4b345
         PREFIX "${CMAKE_BINARY_DIR}/third_party/arrow"
         INSTALL_DIR "${CMAKE_BINARY_DIR}/third_party/arrow/install"
         BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libarrow.a
@@ -46,6 +46,7 @@ ExternalProject_Add(
                          -DARROW_POSITION_INDEPENDENT_CODE=ON
                          -DARROW_SIMD_LEVEL=NONE
                          -DARROW_JEMALLOC=OFF
+                         -DARROW_MIMALLOC=OFF
                          -DARROW_IPC=ON
                          -DARROW_JSON=OFF
                          -DARROW_ORC=OFF
