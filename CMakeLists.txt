@@ -16,7 +16,9 @@ else()
   set(OSX_ARCH_FLAG "")
 endif()
 
+# Do they actually work?
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+set(ENV{CMAKE_POLICY_VERSION_MINIMUM} 3.5)
 
 # Building Arrow
 include(ExternalProject)
