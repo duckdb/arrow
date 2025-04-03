@@ -16,6 +16,8 @@ else()
   set(OSX_ARCH_FLAG "")
 endif()
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 # Building Arrow
 include(ExternalProject)
 ExternalProject_Add(
