@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.5...3.29)
 
 # Set extension name here
 set(TARGET_NAME arrow)
@@ -15,6 +15,10 @@ if(NOT "${OSX_BUILD_ARCH}" STREQUAL "")
 else()
   set(OSX_ARCH_FLAG "")
 endif()
+
+# Do they actually work?
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+set(ENV{CMAKE_POLICY_VERSION_MINIMUM} 3.5)
 
 # Building Arrow
 include(ExternalProject)
@@ -45,6 +49,7 @@ ExternalProject_Add(
     -DARROW_WITH_LZ4=OFF -DARROW_WITH_SNAPPY=OFF -DARROW_WITH_ZLIB=OFF
     -DARROW_WITH_ZSTD=OFF -DARROW_WITH_UCX=OFF -DARROW_WITH_UTF8PROC=OFF
     -DARROW_WITH_RE2=OFF <SOURCE_DIR>/cpp
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
   CMAKE_ARGS -Wno-dev
   UPDATE_COMMAND "")
 
